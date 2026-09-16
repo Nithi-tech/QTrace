@@ -4,42 +4,56 @@
 
 ```mermaid
 flowchart LR
-    subgraph Input
-        A[Network Data<br/>OSM / Synthetic Generator] --> G
-        B[Live/Simulated Traffic Feed] --> G
+    subgraph Client
+        AND[Android App<br/>Kotlin + Compose]
     end
 
-    subgraph Core["src/graph + src/optimization"]
-        G[Graph Model<br/>src/graph] --> F[Objective &amp; Constraints<br/>docs/math-formulation.md]
-        F --> Q[QPSO Engine<br/>src/optimization/qpso]
-        F --> BASE[Baselines: Dijkstra, A*, GA, ACO, PSO<br/>src/optimization/baselines]
-        Q --> R[Route Results + Convergence Log]
-        BASE --> R
+    AND -- HTTPS/JSON --> API
+
+    subgraph Backend["FastAPI Backend (backend/app)"]
+        API[API Layer<br/>app/api] --> SVC[Services<br/>app/services]
+        SVC --> ROUTING[RoutingProvider<br/>app/routing]
+        SVC --> OPT[Optimization Service<br/>app/optimization]
+        SVC --> REPO[Repositories<br/>app/repositories]
+        OPT --> QPSO[QPSO Engine]
+        OPT --> ORTOOLS[OR-Tools Baseline]
+        SVC --> WORKERS[RQ Workers<br/>app/workers]
     end
 
-    subgraph Platform
-        R --> API[API Layer<br/>src/api]
-        API --> UI[Visualization / Dashboard<br/>src/visualization]
-    end
-
-    subgraph Evaluation
-        R --> BM[Benchmark Runner<br/>benchmarks/scripts]
-        BM --> RES[Results &amp; Charts<br/>benchmarks/results]
-    end
+    ROUTING --> OSRM[OSRM<br/>development]
+    ROUTING --> TOMTOM[TomTom<br/>production, traffic-aware]
+    REPO --> DB[(PostgreSQL / PostGIS)]
+    WORKERS --> REDIS[(Redis Queue)]
 ```
 
 ## Layers
 
-1. **Input layer** — synthetic graph generator (`data/synthetic`) and real-world network importer (`data/real_world`, OpenStreetMap-based), plus a traffic-weight simulator/feed.
-2. **Modeling layer** (`src/graph`) — graph construction, dynamic edge-weight updates, adjacency utilities.
-3. **Formulation layer** (`docs/math-formulation.md`) — objective function and constraints shared by every solver so comparisons are apples-to-apples.
-4. **Optimization layer** (`src/optimization`) — the QPSO engine plus baseline solvers behind one common solver interface.
-5. **Platform layer** (`src/api`, `src/visualization`) — a thin API that accepts a network + traffic snapshot and returns optimized routes, rendered on a map/graph view.
-6. **Evaluation layer** (`benchmarks/`) — scripted sweeps across problem sizes, collecting solution quality, runtime, and convergence-speed metrics into `benchmarks/results`.
+1. **Client layer** (`android/`) — Kotlin/Compose app; contains no API secrets, talks to the backend over HTTPS/JSON only.
+2. **API layer** (`backend/app/api`) — versioned FastAPI routers; input validation, predictable response shapes, no leaked internals.
+3. **Service layer** (`backend/app/services`) — business logic; orchestrates routing, optimization, and persistence. UI/API code never implements optimization or routing logic directly (CLAUDE.md §6.2).
+4. **Routing layer** (`backend/app/routing`) — `RoutingProvider` abstraction (`geocode`, `route`, `matrix`) with `OSRMProvider` (development) and a future `TomTomProvider` (production, traffic-aware). Provider-specific logic stays inside this layer only (CLAUDE.md §6.3).
+5. **Optimization layer** (`backend/app/optimization`) — QPSO engine plus an OR-Tools classical baseline, both operating on the distance/time matrix a `RoutingProvider` returns, applied to TSP/VRP/CVRP/CVRPTW problem instances (CLAUDE.md §8).
+6. **Persistence layer** (`backend/app/models`, `backend/app/repositories`) — SQLAlchemy models for the domain entities (User, Vehicle, Depot, DeliveryStop, Route, OptimizationJob, TrafficSnapshot) backed by PostgreSQL/PostGIS, with Alembic migrations.
+7. **Background jobs** (`backend/app/workers`) — Redis + RQ workers for long-running optimization jobs so the API request path never blocks on optimization (CLAUDE.md §15, §25).
 
-## Solver Interface Contract
+## Why routing is delegated, not built in-house
 
-Every solver (QPSO and each baseline) implements the same contract so benchmarking is a drop-in swap:
+An earlier version of this document (and the original hackathon framing)
+proposed a custom weighted-graph engine with in-house Dijkstra/A* shortest
+paths, benchmarked against GA/ACO/PSO. The production architecture in
+[CLAUDE.md](../CLAUDE.md) instead delegates all road-network routing to
+external providers (OSRM/TomTom) via the `RoutingProvider` interface, and
+scopes QPSO/OR-Tools to the VRP-style stop-ordering problem on top of the
+resulting distance/time matrix. This avoids maintaining a bespoke routing
+engine and keeps QTrace's optimization core focused on fleet/route
+intelligence rather than road-graph shortest-path computation.
 
-- **Input:** graph snapshot, vehicle/capacity constraints, time windows, depot(s).
-- **Output:** route set, total cost (time/distance/congestion-weighted), iterations-to-convergence, wall-clock time.
+## RoutingProvider Contract
+
+- **`geocode(address) -> Coordinate`** — resolve free text to a coordinate. Not every provider supports this (e.g. OSRM does not; a geocoding-capable provider must be configured separately).
+- **`route(coordinates) -> RouteResult`** — road-network route through an ordered list of coordinates: distance, duration, geometry.
+- **`matrix(coordinates) -> MatrixResult`** — full pairwise distance/duration matrix, the primary input to the optimization layer.
+
+Coordinate ordering is `(latitude, longitude)` everywhere in QTrace's own
+schemas; providers with a different convention (OSRM uses `lon,lat`) convert
+at their own boundary only (CLAUDE.md §39).
