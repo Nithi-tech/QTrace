@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.api.v1.fleet import router as fleet_router
 from app.api.v1.geocoding import router as geocoding_router
 from app.api.v1.optimization import router as optimization_router
 from app.api.v1.routes import router as routes_router
@@ -22,6 +23,7 @@ from app.routing.exceptions import (
 )
 from app.schemas.errors import ErrorResponse
 from app.schemas.health import HealthResponse
+from app.services.exceptions import FleetInfeasibleError
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ _ERROR_STATUS_MAP = {
     GeocodingConfigurationError: 503,
     GeocodingProviderTimeoutError: 504,
     GeocodingProviderUnavailableError: 502,
+    FleetInfeasibleError: 422,
 }
 
 
@@ -62,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_router, prefix=settings.api_v1_prefix)
     app.include_router(optimization_router, prefix=settings.api_v1_prefix)
     app.include_router(geocoding_router, prefix=settings.api_v1_prefix)
+    app.include_router(fleet_router, prefix=settings.api_v1_prefix)
 
     return app
 

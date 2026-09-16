@@ -14,6 +14,7 @@ from app.geocoding.tomtom_provider import TomTomGeocodingProvider
 from app.repositories.optimization_job_repository import OptimizationJobRepository
 from app.routing.base import RoutingProvider
 from app.routing.osrm_provider import OSRMProvider
+from app.services.fleet_optimization_service import FleetOptimizationService
 from app.services.optimization_service import OptimizationService
 
 
@@ -61,4 +62,16 @@ def get_optimization_service(
         routing_provider=routing_provider,
         job_repository=job_repository,
         max_stops=settings.max_route_stops,
+    )
+
+
+def get_fleet_optimization_service(
+    routing_provider: RoutingProvider = Depends(get_routing_provider),
+    geocoding_provider: GeocodingProvider = Depends(get_geocoding_provider),
+    job_repository: OptimizationJobRepository = Depends(get_optimization_job_repository),
+) -> FleetOptimizationService:
+    return FleetOptimizationService(
+        routing_provider=routing_provider,
+        geocoding_provider=geocoding_provider,
+        job_repository=job_repository,
     )

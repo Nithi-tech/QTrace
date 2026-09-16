@@ -122,7 +122,11 @@ python -m pytest
 `POST /api/v1/routes` (road route, optionally through `stops`), `POST
 /api/v1/optimization/jobs` / `GET /api/v1/optimization/jobs/{id}` (route +
 QPSO stop-order optimization for 2+ stops), `GET
-/api/v1/geocoding/search?query=...` (place search). Routing defaults to the
+/api/v1/geocoding/search?query=...` (place search). Multi-vehicle fleet
+routing: `POST /api/v1/fleet/routes` (depot + fleet + destinations in, one
+optimized route per vehicle out — see
+[docs/qisa-roadmap.md](docs/qisa-roadmap.md) for the current per-vehicle
+algorithm and the planned future optimizer). Routing defaults to the
 public OSRM demo server (no setup required); geocoding defaults to TomTom
 (requires `TOMTOM_API_KEY`) or set `GEOCODING_PROVIDER=nominatim` for a
 keyless alternative — see [docs/OSRM_INTEGRATION.md](docs/OSRM_INTEGRATION.md).
@@ -140,6 +144,7 @@ See [android/README.md](android/README.md) for required `local.properties` value
 
 - [System Architecture](docs/architecture.md)
 - [OSRM Routing Integration](docs/OSRM_INTEGRATION.md)
+- [QISA Roadmap (future multi-vehicle optimizer)](docs/qisa-roadmap.md)
 - [Mathematical Formulation](docs/math-formulation.md)
 - [Original Problem Statement (hackathon source)](docs/problem-statement.md)
 - [Demonstration Plan](docs/demonstration.md)
