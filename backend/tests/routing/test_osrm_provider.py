@@ -105,3 +105,21 @@ async def test_geocode_is_not_supported():
     provider = OSRMProvider(base_url=BASE_URL)
     with pytest.raises(NotImplementedError):
         await provider.geocode("123 Main St")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_route_uses_configured_profile_in_url():
+    route = respx.get(f"{BASE_URL}/route/v1/bicycle/77.59,12.97;77.6,12.98").mock(
+        return_value=httpx.Response(
+            200,
+            json={"code": "Ok", "routes": [{"distance": 1200.0, "duration": 300.0, "geometry": None}]},
+        )
+    )
+
+    provider = OSRMProvider(base_url=BASE_URL, profile="bicycle")
+    await provider.route(
+        [Coordinate(latitude=12.97, longitude=77.59), Coordinate(latitude=12.98, longitude=77.6)]
+    )
+
+    assert route.called

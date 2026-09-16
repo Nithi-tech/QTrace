@@ -17,6 +17,11 @@ class Coordinate(BaseModel):
 class RouteRequest(BaseModel):
     origin: Coordinate
     destination: Coordinate
+    stops: list[Coordinate] = Field(
+        default_factory=list,
+        description="Intermediate stops between origin and destination, in no particular "
+        "order. With 2+ stops, OptimizationService reorders them with QPSO before routing.",
+    )
 
 
 class RouteResult(BaseModel):

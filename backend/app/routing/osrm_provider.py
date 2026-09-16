@@ -25,8 +25,15 @@ def _format_coordinates(coordinates: list[Coordinate]) -> str:
 
 
 class OSRMProvider(RoutingProvider):
-    def __init__(self, base_url: str, timeout_seconds: float = 5.0, max_retries: int = 2) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        profile: str = "driving",
+        timeout_seconds: float = 5.0,
+        max_retries: int = 2,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
+        self._profile = profile
         self._timeout_seconds = timeout_seconds
         self._max_retries = max_retries
 
@@ -39,7 +46,7 @@ class OSRMProvider(RoutingProvider):
         if len(coordinates) < 2:
             raise InvalidRouteInputError("route() requires at least two coordinates.")
 
-        path = f"/route/v1/driving/{_format_coordinates(coordinates)}"
+        path = f"/route/v1/{self._profile}/{_format_coordinates(coordinates)}"
         params = {"overview": "full", "geometries": "geojson"}
         payload = await self._get(path, params)
 
@@ -57,7 +64,7 @@ class OSRMProvider(RoutingProvider):
         if len(coordinates) < 2:
             raise InvalidRouteInputError("matrix() requires at least two coordinates.")
 
-        path = f"/table/v1/driving/{_format_coordinates(coordinates)}"
+        path = f"/table/v1/{self._profile}/{_format_coordinates(coordinates)}"
         params = {"annotations": "distance,duration"}
         payload = await self._get(path, params)
 

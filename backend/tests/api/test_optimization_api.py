@@ -23,3 +23,17 @@ def test_create_and_fetch_optimization_job(client):
 def test_fetch_unknown_job_returns_404(client):
     response = client.get("/api/v1/optimization/jobs/does-not-exist")
     assert response.status_code == 404
+
+
+def test_create_job_with_stops_runs_qpso(client):
+    stops = [{"latitude": 12.95, "longitude": 77.55}, {"latitude": 12.90, "longitude": 77.50}]
+    response = client.post(
+        "/api/v1/optimization/jobs",
+        json={"origin": ORIGIN, "destination": DESTINATION, "stops": stops},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["algorithm"] == "QPSO"
+    assert body["result"]["stops_count"] == 4
+    assert sorted(body["result"]["stop_order"]) == [0, 1]

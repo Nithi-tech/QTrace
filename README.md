@@ -119,9 +119,13 @@ python -m pytest
 ```
 
 `GET /health` is available once the app is running. Route planning:
-`POST /api/v1/routes` (plain road route), `POST /api/v1/optimization/jobs` /
-`GET /api/v1/optimization/jobs/{id}` (route + optimization result), `GET
-/api/v1/geocoding/search?query=...` (place search, requires `TOMTOM_API_KEY`).
+`POST /api/v1/routes` (road route, optionally through `stops`), `POST
+/api/v1/optimization/jobs` / `GET /api/v1/optimization/jobs/{id}` (route +
+QPSO stop-order optimization for 2+ stops), `GET
+/api/v1/geocoding/search?query=...` (place search). Routing defaults to the
+public OSRM demo server (no setup required); geocoding defaults to TomTom
+(requires `TOMTOM_API_KEY`) or set `GEOCODING_PROVIDER=nominatim` for a
+keyless alternative — see [docs/OSRM_INTEGRATION.md](docs/OSRM_INTEGRATION.md).
 
 Android:
 
@@ -135,6 +139,7 @@ See [android/README.md](android/README.md) for required `local.properties` value
 ## Documentation
 
 - [System Architecture](docs/architecture.md)
+- [OSRM Routing Integration](docs/OSRM_INTEGRATION.md)
 - [Mathematical Formulation](docs/math-formulation.md)
 - [Original Problem Statement (hackathon source)](docs/problem-statement.md)
 - [Demonstration Plan](docs/demonstration.md)

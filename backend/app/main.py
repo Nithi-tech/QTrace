@@ -18,6 +18,7 @@ from app.routing.exceptions import (
     InvalidRouteInputError,
     RoutingProviderTimeoutError,
     RoutingProviderUnavailableError,
+    TooManyStopsError,
 )
 from app.schemas.errors import ErrorResponse
 from app.schemas.health import HealthResponse
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Domain exception -> (HTTP status, structured error code). Never leaks stack traces (CLAUDE.md #16, #19).
 _ERROR_STATUS_MAP = {
     InvalidRouteInputError: 400,
+    TooManyStopsError: 400,
     RoutingProviderTimeoutError: 504,
     RoutingProviderUnavailableError: 502,
     GeocodingConfigurationError: 503,

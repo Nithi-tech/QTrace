@@ -16,3 +16,12 @@ def test_compute_route_rejects_invalid_latitude(client):
     response = client.post("/api/v1/routes", json={"origin": invalid_origin, "destination": DESTINATION})
 
     assert response.status_code == 422
+
+
+def test_compute_route_accepts_intermediate_stops(client):
+    stop = {"latitude": 12.975, "longitude": 77.595}
+    response = client.post(
+        "/api/v1/routes", json={"origin": ORIGIN, "destination": DESTINATION, "stops": [stop]}
+    )
+
+    assert response.status_code == 200

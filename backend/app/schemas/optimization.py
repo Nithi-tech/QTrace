@@ -5,10 +5,8 @@ from pydantic import BaseModel, Field
 from app.models.optimization_job import OptimizationJobStatus
 from app.schemas.routing import RouteRequest, RouteResult
 
-# Request for the first QTrace feature: a single origin -> destination route.
-# Intentionally does not accept intermediate stops yet (CLAUDE.md #15 -
-# implement only what this feature actually requires); the service layer
-# underneath is already shaped to extend to a stops list for VRP later.
+# origin, destination, and 0+ intermediate stops (CLAUDE.md #8.2 - a TSP-path
+# variant of VRP; CVRP/CVRPTW constraints are not yet implemented).
 OptimizationRouteRequest = RouteRequest
 
 
@@ -19,6 +17,9 @@ class OptimizationRouteResult(BaseModel):
     )
     status: OptimizationJobStatus
     stops_count: int
+    stop_order: list[int] = Field(
+        description="Indices into the request's `stops` list, in the order QPSO visits them."
+    )
     objective_value: float | None = None
     optimization_runtime_ms: float | None = None
     explanation: str
