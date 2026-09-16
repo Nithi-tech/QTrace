@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,12 +33,15 @@ import com.qtrace.app.ui.components.RouteResultPanel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutePlanningScreen(viewModel: RoutePlanningViewModel = hiltViewModel()) {
+fun RoutePlanningScreen(
+    onNavigateToFleetPlanning: () -> Unit = {},
+    viewModel: RoutePlanningViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsState()
 
     Scaffold { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Header()
+            Header(onNavigateToFleetPlanning = onNavigateToFleetPlanning)
 
             RoutePlanningInputs(state = state, onEvent = viewModel::onEvent)
 
@@ -97,14 +101,23 @@ fun RoutePlanningScreen(viewModel: RoutePlanningViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun Header() {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
-        Text(
-            text = stringResource(R.string.app_tagline),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun Header(onNavigateToFleetPlanning: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                text = stringResource(R.string.app_tagline),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onNavigateToFleetPlanning) {
+            Text(stringResource(R.string.fleet_planning_action))
+        }
     }
 }
 

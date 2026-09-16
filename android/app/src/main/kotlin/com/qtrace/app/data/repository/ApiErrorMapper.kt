@@ -23,6 +23,7 @@ fun mapHttpErrorToQTraceError(response: Response<*>, json: Json): QTraceError {
         code == "GEOCODING_PROVIDER_TIMEOUT" -> QTraceError.RequestTimedOut
         code == "ROUTING_PROVIDER_UNAVAILABLE" -> QTraceError.RoutingProviderUnavailable
         code == "ROUTING_PROVIDER_TIMEOUT" -> QTraceError.RequestTimedOut
+        code == "FLEET_INFEASIBLE" -> QTraceError.OptimizationInfeasible
         response.code() == 404 -> QTraceError.Unknown("Not found")
         response.code() in 500..599 -> QTraceError.RoutingProviderUnavailable
         else -> QTraceError.Unknown(code ?: "HTTP ${response.code()}")

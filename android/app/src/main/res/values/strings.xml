@@ -38,4 +38,7 @@
     <string name="content_description_start_marker">Start location marker</string>
     <string name="content_description_destination_marker">Destination marker</string>
     <string name="content_description_clear_field">Clear</string>
+
+    <string name="fleet_planning_action">Plan Fleet</string>
+    <string name="content_description_fleet_map">Map showing depot, destinations, and vehicle routes</string>
 </resources>

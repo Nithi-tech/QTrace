@@ -1,5 +1,7 @@
 package com.qtrace.app.data.api
 
+import com.qtrace.app.data.api.dto.FleetRouteRequestDto
+import com.qtrace.app.data.api.dto.FleetRouteResponseDto
 import com.qtrace.app.data.api.dto.GeocodingSuggestionDto
 import com.qtrace.app.data.api.dto.OptimizationJobResponseDto
 import com.qtrace.app.data.api.dto.RouteRequestDto
@@ -20,4 +22,7 @@ interface QTraceApiService {
 
     @POST("api/v1/optimization/jobs")
     suspend fun createOptimizationJob(@Body request: RouteRequestDto): Response<OptimizationJobResponseDto>
+
+    @POST("api/v1/fleet/routes")
+    suspend fun createFleetRoutes(@Body request: FleetRouteRequestDto): Response<FleetRouteResponseDto>
 }
