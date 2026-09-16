@@ -14,6 +14,11 @@ class Coordinate(BaseModel):
     longitude: float = Field(ge=-180, le=180)
 
 
+class RouteRequest(BaseModel):
+    origin: Coordinate
+    destination: Coordinate
+
+
 class RouteResult(BaseModel):
     distance_meters: float
     duration_seconds: float

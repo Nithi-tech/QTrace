@@ -63,6 +63,8 @@ constraints on changing it.
 
 ```
 QTrace/
+├── android/                      # Kotlin/Compose app - see android/README.md
+│   └── app/src/main/kotlin/com/qtrace/app/{ui,domain,data,di}/
 ├── backend/                     # FastAPI service
 │   ├── app/
 │   │   ├── main.py
@@ -70,7 +72,9 @@ QTrace/
 │   │   ├── models/                # SQLAlchemy domain models
 │   │   ├── schemas/                # Pydantic I/O schemas
 │   │   ├── routing/                # RoutingProvider abstraction + OSRMProvider
-│   │   ├── services/, repositories/, optimization/, traffic/, workers/, utils/
+│   │   ├── geocoding/               # GeocodingProvider abstraction + TomTomGeocodingProvider
+│   │   ├── optimization/            # QPSO stop-ordering solver
+│   │   ├── services/, repositories/, traffic/, workers/, utils/
 │   │   └── api/v1/                 # versioned endpoints
 │   ├── tests/
 │   ├── alembic/                    # migrations
@@ -85,9 +89,6 @@ QTrace/
 ├── CLAUDE.md                     # engineering rules and architecture source of truth
 └── README.md
 ```
-
-An `android/` application will be added under the same layout described in
-[CLAUDE.md](CLAUDE.md) §5 as that work starts.
 
 ## Optimization Approach
 
@@ -117,7 +118,19 @@ source .venv/bin/activate
 python -m pytest
 ```
 
-`GET /health` is available once the app is running.
+`GET /health` is available once the app is running. Route planning:
+`POST /api/v1/routes` (plain road route), `POST /api/v1/optimization/jobs` /
+`GET /api/v1/optimization/jobs/{id}` (route + optimization result), `GET
+/api/v1/geocoding/search?query=...` (place search, requires `TOMTOM_API_KEY`).
+
+Android:
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+See [android/README.md](android/README.md) for required `local.properties` values.
 
 ## Documentation
 

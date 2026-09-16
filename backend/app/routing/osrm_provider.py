@@ -83,7 +83,9 @@ class OSRMProvider(RoutingProvider):
             except httpx.TimeoutException as exc:
                 last_error = exc
                 timed_out = True
-                logger.warning("OSRM request timed out (attempt %d/%d): %s", attempt + 1, self._max_retries + 1, url)
+                logger.warning(
+                    "OSRM request timed out (attempt %d/%d): %s", attempt + 1, self._max_retries + 1, url
+                )
             except httpx.HTTPStatusError as exc:
                 # 4xx/5xx from OSRM itself is not transient in the way a timeout is; do not retry.
                 raise RoutingProviderUnavailableError(

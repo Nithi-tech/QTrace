@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">QTrace</string>
+    <string name="app_tagline">Quantum-Inspired Route Intelligence</string>
+
+    <string name="start_location_label">Start location</string>
+    <string name="start_location_placeholder">Search starting point</string>
+    <string name="destination_label">Destination</string>
+    <string name="destination_placeholder">Search destination</string>
+    <string name="optimize_route_action">Optimize Route</string>
+
+    <string name="result_title">Optimized route</string>
+    <string name="result_distance_label">Distance</string>
+    <string name="result_duration_label">Estimated time</string>
+    <string name="result_algorithm_label">Algorithm</string>
+    <string name="result_status_label">Status</string>
+
+    <string name="status_direct_route">Route calculated successfully</string>
+    <string name="status_optimized">Optimized successfully</string>
+
+    <string name="loading_searching_location">Finding location…</string>
+    <string name="loading_calculating_route">Calculating road route…</string>
+    <string name="loading_optimizing">Optimizing route…</string>
+    <string name="loading_preparing_result">Preparing route result…</string>
+
+    <string name="error_generic_retry">Something went wrong. Please try again.</string>
+    <string name="error_geocoding_failed">Unable to find that location.</string>
+    <string name="error_routing_unavailable">Routing service is unavailable. Please try again.</string>
+    <string name="error_optimization_infeasible">No feasible route was found for the selected locations.</string>
+    <string name="error_network_unavailable">Network connection unavailable.</string>
+    <string name="error_same_location">Start and destination cannot be the same location.</string>
+    <string name="error_invalid_location">That location could not be used. Please choose another.</string>
+
+    <string name="offline_banner">You\'re offline. Route planning needs a connection.</string>
+    <string name="retry_action">Retry</string>
+    <string name="dismiss_action">Dismiss</string>
+
+    <string name="content_description_map">Map showing the planned route</string>
+    <string name="content_description_start_marker">Start location marker</string>
+    <string name="content_description_destination_marker">Destination marker</string>
+    <string name="content_description_clear_field">Clear</string>
+</resources>

@@ -1,4 +1,7 @@
-"""Delivery stop domain model (CLAUDE.md #7 - address/location, demand, priority, service time, time window)."""
+"""Delivery stop domain model.
+
+CLAUDE.md #7: address/location, demand, priority, service time, time window.
+"""
 
 from datetime import datetime
 

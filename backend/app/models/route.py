@@ -1,4 +1,7 @@
-"""Route domain model (CLAUDE.md #7 - vehicle, ordered stops, geometry, distance, duration, cost, metadata)."""
+"""Route domain model.
+
+CLAUDE.md #7: vehicle, ordered stops, geometry, distance, duration, cost, metadata.
+"""
 
 from sqlalchemy import JSON, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship

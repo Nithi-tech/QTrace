@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "RUF"]
+# B008: FastAPI's Depends()-as-default is the framework's documented pattern, not a bug.
+ignore = ["B008"]

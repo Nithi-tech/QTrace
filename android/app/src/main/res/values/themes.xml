@@ -1,0 +1,5 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Compose provides the real Material3 theme (ui/theme/Theme.kt); this XML theme only
+         satisfies the manifest/launch-screen requirement before Compose content is set. -->
+    <style name="Theme.QTrace" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
