@@ -39,6 +39,9 @@ data class FleetRouteRequest(
 data class VehicleRouteResult(
     val vehicleIndex: Int,
     val vehicleType: String,
+    /** Code this vehicle's driver enters on the Drivers screen (see ui/screens/driver) to see
+     * their assigned route and report live location. Null only if the backend didn't return one. */
+    val trackingCode: String? = null,
     val stopNames: List<String>,
     val destinationIndices: List<Int>,
     val distanceMeters: Double,
@@ -54,6 +57,9 @@ data class VehicleRouteResult(
 /** Mirrors backend/app/schemas/fleet.py::FleetRouteResponse. */
 data class FleetRouteResult(
     val scenario: ScenarioType,
+    /** This planning run's id - enter it on the Admin tracking screen (ui/screens/admin) to see
+     * every vehicle generated here on one live map. Null only if the backend didn't return one. */
+    val planningSessionId: String? = null,
     val objective: OptimizationObjective,
     val algorithm: String,
     val isFeasible: Boolean,

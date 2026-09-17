@@ -3,6 +3,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Driver tracking (see ui/screens/driver): the driver's own live location is read on-device
+         and posted to the backend as periodic pings; no location tracking happens without this
+         being granted, and only on the Drivers screen. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".QTraceApplication"

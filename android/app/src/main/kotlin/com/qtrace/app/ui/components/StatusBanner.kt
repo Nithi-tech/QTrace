@@ -27,6 +27,7 @@ fun errorMessageFor(error: QTraceError): String = when (error) {
     QTraceError.RequestTimedOut -> stringResource(R.string.error_routing_unavailable)
     QTraceError.SameLocation -> stringResource(R.string.error_same_location)
     QTraceError.InvalidLocation -> stringResource(R.string.error_invalid_location)
+    QTraceError.TrackingCodeNotFound -> stringResource(R.string.error_tracking_code_not_found)
     is QTraceError.Unknown -> stringResource(R.string.error_generic_retry)
 }
 

@@ -2,13 +2,18 @@ package com.qtrace.app.ui.screens.fleetplanning
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -84,9 +89,9 @@ fun DestinationsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) ->
 
         Text(text = "${state.destinations.size} destination(s)", style = MaterialTheme.typography.labelMedium)
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f, fill = false)) {
-            items(state.destinations, key = { it.id }) { destination ->
-                DestinationRow(destination = destination, onEvent = onEvent)
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.weight(1f, fill = false)) {
+            itemsIndexed(state.destinations, key = { _, destination -> destination.id }) { index, destination ->
+                DestinationRow(index = index, destination = destination, onEvent = onEvent)
             }
         }
 
@@ -98,10 +103,26 @@ fun DestinationsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) ->
 }
 
 @Composable
-private fun DestinationRow(destination: DestinationInput, onEvent: (FleetPlanningEvent) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun DestinationRow(index: Int, destination: DestinationInput, onEvent: (FleetPlanningEvent) -> Unit) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(color = MaterialTheme.colorScheme.secondaryContainer, shape = CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
                 LocationSearchField(
                     label = "Destination name / address",
                     query = destination.query,

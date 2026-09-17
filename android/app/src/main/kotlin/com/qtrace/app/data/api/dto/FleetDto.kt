@@ -42,6 +42,7 @@ data class FleetRouteRequestDto(
 data class VehicleRouteResultDto(
     @SerialName("vehicle_index") val vehicleIndex: Int,
     @SerialName("vehicle_type") val vehicleType: String,
+    @SerialName("tracking_code") val trackingCode: String? = null,
     @SerialName("stop_names") val stopNames: List<String>,
     @SerialName("destination_indices") val destinationIndices: List<Int>,
     @SerialName("distance_meters") val distanceMeters: Double,
@@ -58,6 +59,7 @@ data class VehicleRouteResultDto(
 @Serializable
 data class FleetRouteResponseDto(
     val scenario: String,
+    @SerialName("planning_session_id") val planningSessionId: String? = null,
     val objective: String,
     val algorithm: String,
     @SerialName("is_feasible") val isFeasible: Boolean,

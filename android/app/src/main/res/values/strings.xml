@@ -29,6 +29,7 @@
     <string name="error_network_unavailable">Network connection unavailable.</string>
     <string name="error_same_location">Start and destination cannot be the same location.</string>
     <string name="error_invalid_location">That location could not be used. Please choose another.</string>
+    <string name="error_tracking_code_not_found">That tracking code wasn\'t found. Double-check it and try again.</string>
 
     <string name="offline_banner">You\'re offline. Route planning needs a connection.</string>
     <string name="retry_action">Retry</string>
@@ -41,4 +42,9 @@
 
     <string name="fleet_planning_action">Plan Fleet</string>
     <string name="content_description_fleet_map">Map showing depot, destinations, and vehicle routes</string>
+
+    <string name="driver_tracking_action">Driver</string>
+    <string name="admin_tracking_action">Admin</string>
+    <string name="content_description_driver_map">Map showing your assigned route and current location</string>
+    <string name="content_description_admin_map">Map showing every vehicle\'s planned route and current location</string>
 </resources>

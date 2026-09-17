@@ -14,3 +14,10 @@ class FleetInfeasibleError(Exception):
     """
 
     code = "FLEET_INFEASIBLE"
+
+
+class TrackingSessionNotFoundError(Exception):
+    """Raised when a tracking code (driver-entered) or job id (admin-viewed)
+    doesn't match any tracking session/planning job on record."""
+
+    code = "TRACKING_SESSION_NOT_FOUND"

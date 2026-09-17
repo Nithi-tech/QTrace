@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.qtrace.app.BuildConfig
 import com.qtrace.app.domain.model.OptimizationObjective
+import com.qtrace.app.ui.components.FleetStopMarker
 import com.qtrace.app.ui.components.MapLibreFleetMap
 
 /** Spec section 12 map-preview step, plus optimization objective (spec section 6), before
@@ -52,7 +53,9 @@ fun ReviewStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit)
             MapLibreFleetMap(
                 styleUrl = BuildConfig.MAP_STYLE_URL,
                 depot = state.depot?.coordinate,
-                destinations = state.destinations.mapNotNull { it.coordinate },
+                destinationMarkers = state.destinations.mapNotNull { destination ->
+                    destination.coordinate?.let { FleetStopMarker(coordinate = it) }
+                },
                 vehicleRoutes = emptyList(),
                 modifier = Modifier.fillMaxSize(),
             )

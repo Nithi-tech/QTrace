@@ -21,7 +21,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val REQUEST_TIMEOUT_SECONDS = 10L
+    // Fleet route requests make several sequential upstream calls server-side (one routing
+    // matrix call, then one route() call per vehicle used, plus geocoding for any address-only
+    // destinations), so this must comfortably exceed that total, not just one hop's latency -
+    // 10s was tripping on real multi-vehicle requests before the backend's own per-call timeout
+    // (ROUTING_REQUEST_TIMEOUT_SECONDS) was even reached.
+    private const val REQUEST_TIMEOUT_SECONDS = 30L
 
     @Provides
     @Singleton

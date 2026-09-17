@@ -238,9 +238,9 @@ class FleetPlanningViewModel @Inject constructor(
 
         val next = when (current.step) {
             FleetPlanningStep.SCENARIO -> FleetPlanningStep.DEPOT
-            FleetPlanningStep.DEPOT -> FleetPlanningStep.FLEET
-            FleetPlanningStep.FLEET -> FleetPlanningStep.DESTINATIONS
-            FleetPlanningStep.DESTINATIONS -> FleetPlanningStep.REVIEW
+            FleetPlanningStep.DEPOT -> FleetPlanningStep.DESTINATIONS
+            FleetPlanningStep.DESTINATIONS -> FleetPlanningStep.FLEET
+            FleetPlanningStep.FLEET -> FleetPlanningStep.REVIEW
             FleetPlanningStep.REVIEW -> FleetPlanningStep.REVIEW
             FleetPlanningStep.RESULTS -> FleetPlanningStep.RESULTS
         }
@@ -251,9 +251,9 @@ class FleetPlanningViewModel @Inject constructor(
         val previous = when (_state.value.step) {
             FleetPlanningStep.SCENARIO -> FleetPlanningStep.SCENARIO
             FleetPlanningStep.DEPOT -> FleetPlanningStep.SCENARIO
-            FleetPlanningStep.FLEET -> FleetPlanningStep.DEPOT
-            FleetPlanningStep.DESTINATIONS -> FleetPlanningStep.FLEET
-            FleetPlanningStep.REVIEW -> FleetPlanningStep.DESTINATIONS
+            FleetPlanningStep.DESTINATIONS -> FleetPlanningStep.DEPOT
+            FleetPlanningStep.FLEET -> FleetPlanningStep.DESTINATIONS
+            FleetPlanningStep.REVIEW -> FleetPlanningStep.FLEET
             FleetPlanningStep.RESULTS -> FleetPlanningStep.REVIEW
         }
         _state.update { it.copy(step = previous) }

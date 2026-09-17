@@ -8,9 +8,12 @@ import com.qtrace.app.domain.model.QTraceError
 import com.qtrace.app.domain.model.ScenarioType
 import java.util.UUID
 
-/** The user journey (spec section 12): Scenario -> Depot -> Fleet -> Destinations -> Review (map)
- * -> Results. Each step is a screen within the same wizard-style flow. */
-enum class FleetPlanningStep { SCENARIO, DEPOT, FLEET, DESTINATIONS, REVIEW, RESULTS }
+/** The user journey: Scenario -> Depot -> Destinations -> Fleet -> Review (map) -> Results. Each
+ * step is a screen within the same wizard-style flow. Destinations are collected before the
+ * fleet on purpose: once the destinations (and their demand) are known, the Fleet step can show
+ * a suggested minimum vehicle count for them (see [FleetPlanningState.suggestedMinimumVehicles]),
+ * rather than asking the user to configure a fleet size blind. */
+enum class FleetPlanningStep { SCENARIO, DEPOT, DESTINATIONS, FLEET, REVIEW, RESULTS }
 
 enum class VehicleField { TYPE, COUNT, CAPACITY, COST_PER_KM, AVAILABILITY_START, AVAILABILITY_END }
 enum class DestinationField { DEMAND, TIME_WINDOW_START, TIME_WINDOW_END, SERVICE_TIME_MINUTES }
@@ -94,6 +97,11 @@ data class FleetPlanningState(
     val canProceedFromDepot: Boolean get() = depot != null
     val canProceedFromFleet: Boolean get() = vehicles.isNotEmpty() && vehicles.all { it.isValid }
     val canProceedFromDestinations: Boolean get() = destinations.isNotEmpty() && destinations.all { it.isValid }
+
+    /** Total demand across every destination entered so far, used on the Fleet step (which now
+     * comes after Destinations) to suggest how many vehicles of a given capacity are needed. */
+    val totalDestinationDemand: Double
+        get() = destinations.sumOf { it.demand.toDoubleOrNull() ?: 0.0 }
 
     val canGenerateRoutes: Boolean
         get() = !isSubmitting && !isOffline && depot != null && canProceedFromFleet && canProceedFromDestinations

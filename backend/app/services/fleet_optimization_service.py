@@ -86,6 +86,7 @@ class FleetOptimizationService:
     def _check_time_windows(
         self,
         vehicle_availability_start: time | None,
+        vehicle_availability_end: time | None,
         order: list[int],
         destination_by_matrix_index: dict[int, Destination],
         durations_seconds: list[list[float]],
@@ -93,9 +94,12 @@ class FleetOptimizationService:
         """Heuristic sequential check: does each stop get reached inside its time
         window, assuming departure at the vehicle's availability_start (or
         midnight if unset)? `order` includes the depot (matrix index 0) at its
-        start and, if the vehicle returns to base, its end. Ignores overnight
-        wraparound (CLAUDE.md #40 note: a full CVRPTW time-domain model is
-        future work, see docs/qisa-roadmap.md)."""
+        start and, if the vehicle returns to base, its end. Also flags the
+        vehicle's own availability_end being exceeded by the time the route
+        finishes (its last position in `order`), so that input isn't collected
+        and then silently ignored. Ignores overnight wraparound (CLAUDE.md #40
+        note: a full CVRPTW time-domain model is future work, see
+        docs/qisa-roadmap.md)."""
         violations: list[str] = []
         clock = datetime.combine(datetime.min.date(), vehicle_availability_start or time(0, 0))
 
@@ -114,6 +118,12 @@ class FleetOptimizationService:
                     f"after window end {destination.time_window_end.strftime('%H:%M')}"
                 )
             clock += timedelta(seconds=destination.service_time_seconds)
+
+        if vehicle_availability_end is not None and clock.time() > vehicle_availability_end:
+            violations.append(
+                f"Vehicle: route finishes at {clock.time().strftime('%H:%M')}, "
+                f"after it is available until {vehicle_availability_end.strftime('%H:%M')}"
+            )
 
         return violations
 
@@ -182,6 +192,7 @@ class FleetOptimizationService:
             distance_km = route.distance_meters / 1000.0
             violations = self._check_time_windows(
                 vehicle.availability_start,
+                vehicle.availability_end,
                 order,
                 destination_by_matrix_index,
                 matrix.durations_seconds,

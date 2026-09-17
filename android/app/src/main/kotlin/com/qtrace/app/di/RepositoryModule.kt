@@ -5,9 +5,11 @@ import com.qtrace.app.data.network.ConnectivityObserver
 import com.qtrace.app.data.repository.FleetRepositoryImpl
 import com.qtrace.app.data.repository.GeocodingRepositoryImpl
 import com.qtrace.app.data.repository.RouteRepositoryImpl
+import com.qtrace.app.data.repository.TrackingRepositoryImpl
 import com.qtrace.app.domain.repository.FleetRepository
 import com.qtrace.app.domain.repository.GeocodingRepository
 import com.qtrace.app.domain.repository.RouteRepository
+import com.qtrace.app.domain.repository.TrackingRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -33,4 +35,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindConnectivityObserver(impl: AndroidConnectivityObserver): ConnectivityObserver
+
+    @Binds
+    @Singleton
+    abstract fun bindTrackingRepository(impl: TrackingRepositoryImpl): TrackingRepository
 }

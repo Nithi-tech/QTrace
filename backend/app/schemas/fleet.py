@@ -82,6 +82,11 @@ class FleetRouteRequest(BaseModel):
 class VehicleRouteResult(BaseModel):
     vehicle_index: int = Field(description="0-based index identifying this vehicle instance in the response.")
     vehicle_type: str
+    tracking_code: str | None = Field(
+        default=None,
+        description="Short code this vehicle's driver enters in the app to see their assigned "
+        "route and report live location (POST /api/v1/tracking/{tracking_code}/ping).",
+    )
     stop_names: list[str] = Field(
         description='Ordered visit list, e.g. ["Depot", "T Nagar", "Adyar", "Depot"].'
     )
@@ -100,6 +105,11 @@ class VehicleRouteResult(BaseModel):
 
 class FleetRouteResponse(BaseModel):
     scenario: ScenarioType
+    planning_session_id: str | None = Field(
+        default=None,
+        description="This planning run's id - pass it to GET /api/v1/tracking/jobs/{planning_session_id} "
+        "for the admin fleet-wide tracking view of every vehicle generated here.",
+    )
     objective: OptimizationObjective
     algorithm: str = Field(
         description="Per-vehicle route-ordering method actually used, e.g. 'GREEDY_NN_2OPT'."

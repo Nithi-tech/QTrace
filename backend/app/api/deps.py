@@ -12,10 +12,12 @@ from app.geocoding.exceptions import GeocodingConfigurationError
 from app.geocoding.nominatim_provider import NominatimProvider
 from app.geocoding.tomtom_provider import TomTomGeocodingProvider
 from app.repositories.optimization_job_repository import OptimizationJobRepository
+from app.repositories.tracking_repository import TrackingRepository
 from app.routing.base import RoutingProvider
 from app.routing.osrm_provider import OSRMProvider
 from app.services.fleet_optimization_service import FleetOptimizationService
 from app.services.optimization_service import OptimizationService
+from app.services.tracking_service import TrackingService
 
 
 def get_routing_provider(settings: Settings = Depends(get_settings)) -> RoutingProvider:
@@ -75,3 +77,13 @@ def get_fleet_optimization_service(
         geocoding_provider=geocoding_provider,
         job_repository=job_repository,
     )
+
+
+def get_tracking_repository(db: Session = Depends(get_db)) -> Generator[TrackingRepository, None, None]:
+    yield TrackingRepository(db)
+
+
+def get_tracking_service(
+    tracking_repository: TrackingRepository = Depends(get_tracking_repository),
+) -> TrackingService:
+    return TrackingService(tracking_repository)

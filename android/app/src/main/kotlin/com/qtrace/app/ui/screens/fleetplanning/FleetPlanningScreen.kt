@@ -29,9 +29,10 @@ import com.qtrace.app.ui.components.OfflineBanner
 private val STEP_ORDER = FleetPlanningStep.entries.filter { it != FleetPlanningStep.RESULTS }
 
 /**
- * Multi-vehicle VRP wizard (spec section 12): Scenario -> Depot -> Fleet -> Destinations ->
- * Review (map) -> Results. Entirely additive - the original single-vehicle RoutePlanningScreen
- * is unchanged and reachable as before.
+ * Multi-vehicle VRP wizard: Scenario -> Depot -> Destinations -> Fleet -> Review (map) ->
+ * Results. Destinations come before Fleet so the Fleet step can suggest a minimum vehicle count
+ * for the destinations already entered. Entirely additive - the original single-vehicle
+ * RoutePlanningScreen is unchanged and reachable as before.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +82,8 @@ fun FleetPlanningScreen(onExit: () -> Unit, viewModel: FleetPlanningViewModel = 
                 when (state.step) {
                     FleetPlanningStep.SCENARIO -> ScenarioStep(state, viewModel::onEvent)
                     FleetPlanningStep.DEPOT -> DepotStep(state, viewModel::onEvent)
-                    FleetPlanningStep.FLEET -> FleetStep(state, viewModel::onEvent)
                     FleetPlanningStep.DESTINATIONS -> DestinationsStep(state, viewModel::onEvent)
+                    FleetPlanningStep.FLEET -> FleetStep(state, viewModel::onEvent)
                     FleetPlanningStep.REVIEW -> ReviewStep(state, viewModel::onEvent)
                     FleetPlanningStep.RESULTS -> ResultsStep(state, viewModel::onEvent)
                 }
@@ -106,16 +107,16 @@ fun FleetPlanningScreen(onExit: () -> Unit, viewModel: FleetPlanningViewModel = 
 private fun canProceed(state: FleetPlanningState): Boolean = when (state.step) {
     FleetPlanningStep.SCENARIO -> state.canProceedFromScenario
     FleetPlanningStep.DEPOT -> state.canProceedFromDepot
-    FleetPlanningStep.FLEET -> state.canProceedFromFleet
     FleetPlanningStep.DESTINATIONS -> state.canProceedFromDestinations
+    FleetPlanningStep.FLEET -> state.canProceedFromFleet
     FleetPlanningStep.REVIEW, FleetPlanningStep.RESULTS -> true
 }
 
 private fun titleFor(step: FleetPlanningStep): String = when (step) {
     FleetPlanningStep.SCENARIO -> "Plan Fleet Routes"
     FleetPlanningStep.DEPOT -> "Depot / Starting Location"
-    FleetPlanningStep.FLEET -> "Available Fleet"
     FleetPlanningStep.DESTINATIONS -> "Destinations"
+    FleetPlanningStep.FLEET -> "Available Fleet"
     FleetPlanningStep.REVIEW -> "Review & Generate"
     FleetPlanningStep.RESULTS -> "Optimized Routes"
 }

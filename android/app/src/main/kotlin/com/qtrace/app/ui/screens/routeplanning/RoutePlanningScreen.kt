@@ -35,13 +35,19 @@ import com.qtrace.app.ui.components.RouteResultPanel
 @Composable
 fun RoutePlanningScreen(
     onNavigateToFleetPlanning: () -> Unit = {},
+    onNavigateToDriverTracking: () -> Unit = {},
+    onNavigateToAdminTracking: () -> Unit = {},
     viewModel: RoutePlanningViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
     Scaffold { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Header(onNavigateToFleetPlanning = onNavigateToFleetPlanning)
+            Header(
+                onNavigateToFleetPlanning = onNavigateToFleetPlanning,
+                onNavigateToDriverTracking = onNavigateToDriverTracking,
+                onNavigateToAdminTracking = onNavigateToAdminTracking,
+            )
 
             RoutePlanningInputs(state = state, onEvent = viewModel::onEvent)
 
@@ -101,12 +107,12 @@ fun RoutePlanningScreen(
 }
 
 @Composable
-private fun Header(onNavigateToFleetPlanning: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+private fun Header(
+    onNavigateToFleetPlanning: () -> Unit,
+    onNavigateToDriverTracking: () -> Unit,
+    onNavigateToAdminTracking: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         Column {
             Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
             Text(
@@ -115,8 +121,16 @@ private fun Header(onNavigateToFleetPlanning: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        TextButton(onClick = onNavigateToFleetPlanning) {
-            Text(stringResource(R.string.fleet_planning_action))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = onNavigateToFleetPlanning) {
+                Text(stringResource(R.string.fleet_planning_action))
+            }
+            TextButton(onClick = onNavigateToDriverTracking) {
+                Text(stringResource(R.string.driver_tracking_action))
+            }
+            TextButton(onClick = onNavigateToAdminTracking) {
+                Text(stringResource(R.string.admin_tracking_action))
+            }
         }
     }
 }

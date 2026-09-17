@@ -4,6 +4,7 @@ Velachery / Guindy, served by 2 Vans + 1 Mini Truck.
 """
 
 import math
+from datetime import time
 
 import pytest
 
@@ -179,3 +180,60 @@ async def test_demand_exceeding_total_fleet_capacity_reports_partial_infeasibili
     assert response.infeasibility_reason is not None
     for route in response.vehicle_routes:
         assert route.load <= route.capacity
+
+
+@pytest.mark.asyncio
+async def test_vehicle_availability_end_exceeded_is_reported_as_a_violation(service):
+    """Regression test: availability_end is a real input (VehicleSpec) that was
+    previously stored but never checked anywhere - a vehicle configured as
+    only available for 5 minutes must surface that its route runs over."""
+    request = FleetRouteRequest(
+        scenario=ScenarioType.PACKAGE_DELIVERY,
+        depot=Coordinate(latitude=13.0827, longitude=80.2707),
+        vehicles=[
+            VehicleSpec(
+                vehicle_type="Van",
+                count=1,
+                capacity=100.0,
+                availability_start=time(8, 0),
+                availability_end=time(8, 5),  # far too tight for a real trip
+            )
+        ],
+        destinations=[
+            Destination(
+                name="Velachery", coordinate=Coordinate(latitude=12.9789, longitude=80.2189), demand=10.0
+            ),
+        ],
+    )
+
+    _job, response = await service.plan_fleet_routes(request)
+
+    route = response.vehicle_routes[0]
+    assert any("available until" in v for v in route.time_window_violations)
+
+
+@pytest.mark.asyncio
+async def test_vehicle_availability_end_not_exceeded_reports_no_violation(service):
+    request = FleetRouteRequest(
+        scenario=ScenarioType.PACKAGE_DELIVERY,
+        depot=Coordinate(latitude=13.0827, longitude=80.2707),
+        vehicles=[
+            VehicleSpec(
+                vehicle_type="Van",
+                count=1,
+                capacity=100.0,
+                availability_start=time(8, 0),
+                availability_end=time(20, 0),  # generous window
+            )
+        ],
+        destinations=[
+            Destination(
+                name="Velachery", coordinate=Coordinate(latitude=12.9789, longitude=80.2189), demand=10.0
+            ),
+        ],
+    )
+
+    _job, response = await service.plan_fleet_routes(request)
+
+    route = response.vehicle_routes[0]
+    assert route.time_window_violations == []

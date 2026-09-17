@@ -95,3 +95,66 @@ def test_each_vehicle_serves_a_contiguous_directional_wedge_from_the_depot():
         # here; a criss-crossing assignment (e.g. mixing the north and south
         # groups) would span close to 180 degrees.
         assert max(bearings) - min(bearings) < 120.0
+
+
+def test_uses_every_configured_vehicle_when_destinations_allow_it():
+    """Regression test: a single oversized vehicle must not swallow every
+    destination just because it technically has room. The fleet the caller
+    configured (3 vehicle instances here) should turn into 3 routes, not 1,
+    so the vehicle-type/count inputs are actually reflected in the output."""
+    points = [
+        (13.10, 80.27),  # north
+        (13.08, 80.00),  # west
+        (12.90, 80.27),  # south
+    ]
+    demands = [10.0, 10.0, 10.0]
+    # Every one of these vehicles alone could carry all 30 demand.
+    vehicles = [_vehicle(200.0), _vehicle(200.0), _vehicle(200.0)]
+
+    result = fleet_aware_clusters(points, demands, vehicles, depot=DEPOT)
+
+    used_vehicles = [group for group in result.vehicle_assignments if group]
+    assert len(used_vehicles) == 3
+    assert result.unassigned == []
+
+
+def test_matches_cheaper_vehicle_to_the_longer_route_not_just_by_capacity():
+    """Regression test: vehicle-to-cluster matching must account for
+    cost_per_km, not just capacity - given two same-capacity vehicles at very
+    different rates, the far/long cluster should go to the cheaper vehicle,
+    minimizing total estimated cost rather than matching by capacity alone."""
+    depot = (13.0, 80.0)
+    near = (13.01, 80.01)
+    far = (14.0, 81.0)
+    points = [near, far]
+    demands = [10.0, 10.0]
+    expensive = VehicleInstance(vehicle_type="Van", capacity=100.0, cost_per_km=100.0)
+    cheap = VehicleInstance(vehicle_type="Van", capacity=100.0, cost_per_km=1.0)
+    vehicles = [expensive, cheap]  # deliberately list the expensive one first
+
+    result = fleet_aware_clusters(points, demands, vehicles, depot=depot)
+
+    far_index = points.index(far)
+    cheap_vehicle_index = vehicles.index(cheap)
+    assert far_index in result.vehicle_assignments[cheap_vehicle_index]
+
+
+def test_skewed_demand_still_produces_exactly_k_groups():
+    """Regression test for a live crash: one destination with demand far
+    bigger than the rest meant the running load never re-crossed the
+    per-group target enough times, so the demand-threshold split produced
+    fewer than k groups while the rest of the pipeline assumed exactly k -
+    an IndexError that surfaced to users as a fake "routing service
+    unavailable" (it was actually a 500 from this crash, not OSRM)."""
+    n = 12
+    points = [(13.0 + 0.01 * i, 80.0 + 0.01 * i) for i in range(n)]
+    demands = [100.0] + [1.0] * (n - 1)  # one destination dominates total demand
+    vehicles = [_vehicle(200.0) for _ in range(6)]
+
+    result = fleet_aware_clusters(points, demands, vehicles, depot=DEPOT)
+
+    used_vehicles = [group for group in result.vehicle_assignments if group]
+    assert len(used_vehicles) == 6
+    assigned = sorted(i for group in result.vehicle_assignments for i in group)
+    assert assigned == list(range(n))
+    assert result.unassigned == []
