@@ -79,7 +79,7 @@ def _chennai_request(objective: OptimizationObjective = OptimizationObjective.BA
         return_to_depot=True,
         vehicles=[
             VehicleSpec(vehicle_type="Van", count=2, capacity=100.0, cost_per_km=12.0),
-            VehicleSpec(vehicle_type="Mini Truck", count=1, capacity=500.0, cost_per_km=18.0),
+            VehicleSpec(vehicle_type="Mini Truck", count=1, capacity=60.0, cost_per_km=18.0),
         ],
         destinations=[
             Destination(

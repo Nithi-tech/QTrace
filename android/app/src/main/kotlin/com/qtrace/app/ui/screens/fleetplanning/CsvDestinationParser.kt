@@ -44,6 +44,7 @@ object CsvDestinationParser {
             }
 
             DestinationInput(
+                query = name,
                 name = name,
                 address = if (coordinate == null) (cell("address") ?: name) else null,
                 coordinate = coordinate,

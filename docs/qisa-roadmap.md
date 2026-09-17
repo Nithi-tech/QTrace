@@ -104,4 +104,5 @@ polish pass.
   energy-penalty approach improves on this but a complete constraint-solving
   guarantee is further out.
 - Adding scikit-learn or any new heavy dependency - `app/optimization/clustering.py`
-  stays a dependency-free K-Means, consistent with CLAUDE.md §32.
+  stays a dependency-free sweep algorithm (bearing-from-depot, capacity-bounded),
+  consistent with CLAUDE.md §32.

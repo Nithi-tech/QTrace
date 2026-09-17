@@ -10,8 +10,11 @@ import com.qtrace.app.domain.model.VehicleSpec
 import com.qtrace.app.domain.repository.FleetRepository
 import com.qtrace.app.domain.repository.GeocodingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +46,12 @@ class FleetPlanningViewModel @Inject constructor(
     val state: StateFlow<FleetPlanningState> = _state.asStateFlow()
 
     private val depotQueryFlow = MutableStateFlow("")
+
+    // Destinations are a dynamic list (rows added/removed at runtime), so each row's debounced
+    // search is a cancellable coroutine Job keyed by that row's id, rather than a fixed
+    // MutableStateFlow per field like depotQueryFlow - this scales to any number of rows and
+    // cleans up naturally when a row is removed.
+    private val destinationSearchJobs = mutableMapOf<String, Job>()
 
     init {
         connectivityObserver.isOnline()
@@ -98,8 +107,9 @@ class FleetPlanningViewModel @Inject constructor(
             }
 
             FleetPlanningEvent.AddDestination -> _state.update { it.copy(destinations = it.destinations + DestinationInput()) }
-            is FleetPlanningEvent.RemoveDestination -> _state.update {
-                it.copy(destinations = it.destinations.filterNot { d -> d.id == event.id })
+            is FleetPlanningEvent.RemoveDestination -> {
+                destinationSearchJobs.remove(event.id)?.cancel()
+                _state.update { it.copy(destinations = it.destinations.filterNot { d -> d.id == event.id }) }
             }
             is FleetPlanningEvent.DestinationFieldChanged -> _state.update {
                 it.copy(
@@ -107,6 +117,32 @@ class FleetPlanningViewModel @Inject constructor(
                         if (d.id == event.id) updateDestinationField(d, event.field, event.value) else d
                     },
                 )
+            }
+            is FleetPlanningEvent.DestinationQueryChanged -> onDestinationQueryChanged(event.id, event.query)
+            is FleetPlanningEvent.DestinationFieldFocused -> Unit
+            is FleetPlanningEvent.DestinationSuggestionsDismissed -> updateDestination(event.id) { it.copy(suggestions = emptyList()) }
+            is FleetPlanningEvent.DestinationSuggestionSelected -> {
+                destinationSearchJobs.remove(event.id)?.cancel()
+                updateDestination(event.id) {
+                    it.copy(
+                        query = event.suggestion.label,
+                        name = event.suggestion.label,
+                        coordinate = event.suggestion.coordinate,
+                        address = null,
+                        suggestions = emptyList(),
+                        isSearching = false,
+                    )
+                }
+            }
+            is FleetPlanningEvent.ClearDestinationLocation -> {
+                destinationSearchJobs.remove(event.id)?.cancel()
+                updateDestination(event.id) {
+                    it.copy(query = "", name = "", address = null, coordinate = null, suggestions = emptyList(), isSearching = false)
+                }
+            }
+            is FleetPlanningEvent.ManualCoordinateEntered -> updateDestination(event.id) { destination ->
+                val label = "(${event.coordinate.latitude}, ${event.coordinate.longitude})"
+                destination.copy(query = label, name = label, coordinate = event.coordinate, address = null)
             }
             is FleetPlanningEvent.CsvImported -> importCsv(event.csvContent)
             FleetPlanningEvent.CsvImportErrorDismissed -> _state.update { it.copy(csvImportError = null) }
@@ -137,14 +173,47 @@ class FleetPlanningViewModel @Inject constructor(
 
     private fun updateDestinationField(destination: DestinationInput, field: DestinationField, value: String): DestinationInput =
         when (field) {
-            DestinationField.NAME -> destination.copy(name = value, address = value)
             DestinationField.DEMAND -> destination.copy(demand = value)
             DestinationField.TIME_WINDOW_START -> destination.copy(timeWindowStart = value)
             DestinationField.TIME_WINDOW_END -> destination.copy(timeWindowEnd = value)
             DestinationField.SERVICE_TIME_MINUTES -> destination.copy(serviceTimeMinutes = value)
-            DestinationField.LATITUDE -> destination.copy(latitude = value)
-            DestinationField.LONGITUDE -> destination.copy(longitude = value)
         }
+
+    private fun updateDestination(id: String, transform: (DestinationInput) -> DestinationInput) {
+        _state.update { state -> state.copy(destinations = state.destinations.map { if (it.id == id) transform(it) else it }) }
+    }
+
+    /** Mirrors the depot search debounce, but per-row via a cancellable Job instead of a Flow,
+     * since destinations are a dynamic list rather than one fixed field (see
+     * [destinationSearchJobs]). This is the fix for destinations being resolved unreliably from
+     * a bare typed name: the user now sees and picks a real geocoded suggestion, exactly like
+     * the depot field, instead of the name being sent to the backend on faith. */
+    private fun onDestinationQueryChanged(id: String, query: String) {
+        updateDestination(id) { it.copy(query = query, name = "", coordinate = null, address = null, suggestions = emptyList()) }
+        destinationSearchJobs[id]?.cancel()
+
+        val trimmed = query.trim()
+        if (trimmed.length < MIN_QUERY_LENGTH) {
+            updateDestination(id) { it.copy(isSearching = false) }
+            return
+        }
+
+        destinationSearchJobs[id] = viewModelScope.launch {
+            updateDestination(id) { it.copy(isSearching = true) }
+            try {
+                delay(SEARCH_DEBOUNCE_MS)
+                when (val result = geocodingRepository.search(trimmed)) {
+                    is QTraceResult.Success -> updateDestination(id) { it.copy(suggestions = result.data, isSearching = false) }
+                    is QTraceResult.Failure -> {
+                        updateDestination(id) { it.copy(suggestions = emptyList(), isSearching = false) }
+                        _state.update { it.copy(error = result.error) }
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            }
+        }
+    }
 
     private fun importCsv(csvContent: String) {
         try {
@@ -228,8 +297,8 @@ private fun VehicleSpecInput.toDomain(): VehicleSpec =
 private fun DestinationInput.toDomain(): FleetDestination =
     FleetDestination(
         name = name,
-        address = if (effectiveCoordinate == null) (address ?: name) else null,
-        coordinate = effectiveCoordinate,
+        address = if (coordinate == null) (address ?: name) else null,
+        coordinate = coordinate,
         demand = demand.toDoubleOrNull() ?: 0.0,
         timeWindowStart = timeWindowStart.ifBlank { null },
         timeWindowEnd = timeWindowEnd.ifBlank { null },

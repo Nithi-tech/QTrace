@@ -13,14 +13,14 @@ import java.util.UUID
 enum class FleetPlanningStep { SCENARIO, DEPOT, FLEET, DESTINATIONS, REVIEW, RESULTS }
 
 enum class VehicleField { TYPE, COUNT, CAPACITY, COST_PER_KM, AVAILABILITY_START, AVAILABILITY_END }
-enum class DestinationField { NAME, DEMAND, TIME_WINDOW_START, TIME_WINDOW_END, SERVICE_TIME_MINUTES, LATITUDE, LONGITUDE }
+enum class DestinationField { DEMAND, TIME_WINDOW_START, TIME_WINDOW_END, SERVICE_TIME_MINUTES }
 
 /** A vehicle row being edited. Numeric fields are kept as raw strings while editing (Compose
  * TextField state) and parsed/validated only when checking [isValid] or submitting. */
 data class VehicleSpecInput(
     val id: String = UUID.randomUUID().toString(),
     val vehicleType: String = "",
-    val count: String = "1",
+    val count: String = "",
     val capacity: String = "",
     val costPerKm: String = "0",
     val availabilityStart: String = "",
@@ -32,33 +32,39 @@ data class VehicleSpecInput(
             (capacity.toDoubleOrNull() ?: 0.0) > 0.0
 }
 
-/** A destination row, either manually entered or parsed from an uploaded CSV. Either
- * [coordinate] or a non-blank [address] must end up set - the backend geocodes [address] when
- * [coordinate] is absent (CLAUDE.md #38), so a CSV row with only a place name still works by
- * using that name as the address. */
+/**
+ * A destination row. [query] drives a live geocoding search exactly like the depot field
+ * (LocationSearchField) - the user picks a real suggestion, which sets [name]/[coordinate]
+ * together, so the location is *confirmed* rather than a bare name guessed at by the backend
+ * at submit time. This is what fixes "the name alone can't correctly determine [the place]":
+ * previously a destination was just free text sent straight to the backend's geocoder with no
+ * feedback if it picked the wrong (or no) result.
+ *
+ * A row can still end up with only [address] set and no [coordinate] - e.g. a CSV-imported row
+ * with just a name and no lat/lon column - in which case the backend geocodes it server-side as
+ * a fallback (CLAUDE.md #38); [isConfirmed] is false in that case so the UI can flag it.
+ */
 data class DestinationInput(
     val id: String = UUID.randomUUID().toString(),
+    val query: String = "",
+    val suggestions: List<LocationSuggestion> = emptyList(),
+    val isSearching: Boolean = false,
     val name: String = "",
     val address: String? = null,
     val coordinate: Coordinate? = null,
-    val latitude: String = "",
-    val longitude: String = "",
     val demand: String = "0",
     val timeWindowStart: String = "",
     val timeWindowEnd: String = "",
     val serviceTimeMinutes: String = "0",
 ) {
-    /** Explicit lat/lon typed in the UI take priority over [coordinate] (set by CSV import) -
-     * either source, or a non-blank [address] for the backend to geocode, makes a row usable. */
-    val effectiveCoordinate: Coordinate?
-        get() = coordinate ?: run {
-            val lat = latitude.toDoubleOrNull()
-            val lon = longitude.toDoubleOrNull()
-            if (lat != null && lon != null) runCatching { Coordinate(lat, lon) }.getOrNull() else null
-        }
+    /** True once this row has a real coordinate behind it (search-confirmed, manually entered
+     * via [com.qtrace.app.ui.components.ManualCoordinateEntry], or from a CSV lat/lon column) -
+     * not just a name hoping the backend can resolve it. */
+    val isConfirmed: Boolean
+        get() = coordinate != null
 
     val isValid: Boolean
-        get() = name.isNotBlank() && (effectiveCoordinate != null || !address.isNullOrBlank())
+        get() = name.isNotBlank() && (isConfirmed || !address.isNullOrBlank())
 }
 
 data class FleetPlanningState(

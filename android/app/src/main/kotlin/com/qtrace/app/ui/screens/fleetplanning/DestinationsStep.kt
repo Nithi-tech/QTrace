@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Card
@@ -27,9 +29,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.qtrace.app.ui.components.LocationSearchField
+import com.qtrace.app.ui.components.ManualCoordinateEntry
 
-/** Spec section 4: CSV upload plus manual entry. Coordinates are optional per row - the backend
- * geocodes any destination given only a name/address (CLAUDE.md: reuse existing geocoding). */
+/**
+ * Spec section 4: CSV upload plus manual entry. Each manually-added destination now searches
+ * and confirms a real place via [LocationSearchField] - the same reliable pattern the depot
+ * field already used - instead of sending a bare typed name to the backend and hoping its
+ * geocoder resolves it correctly (the exact issue reported: "the name alone can't correctly
+ * determine" the location). A destination without a confirmed coordinate is still allowed
+ * through as an address for the backend to attempt (useful for CSV-imported rows that can't
+ * realistically be confirmed one-by-one), but the UI now makes clear which rows are confirmed
+ * and which aren't (see [DestinationRow]'s confirmation indicator).
+ */
 @Composable
 fun DestinationsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit) {
     val context = LocalContext.current
@@ -43,6 +55,11 @@ fun DestinationsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) ->
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(text = "Where are you delivering?", style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = "Search and select each destination for the most accurate routes.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         OutlinedButton(onClick = { filePicker.launch("text/*") }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.UploadFile, contentDescription = null)
@@ -85,19 +102,47 @@ private fun DestinationRow(destination: DestinationInput, onEvent: (FleetPlannin
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = destination.name,
-                    onValueChange = {
-                        onEvent(FleetPlanningEvent.DestinationFieldChanged(destination.id, DestinationField.NAME, it))
-                    },
-                    label = { Text("Name / address") },
-                    singleLine = true,
+                LocationSearchField(
+                    label = "Destination name / address",
+                    query = destination.query,
+                    suggestions = destination.suggestions,
+                    isExpanded = destination.suggestions.isNotEmpty(),
+                    isSearching = destination.isSearching,
+                    onQueryChanged = { onEvent(FleetPlanningEvent.DestinationQueryChanged(destination.id, it)) },
+                    onFocused = { onEvent(FleetPlanningEvent.DestinationFieldFocused(destination.id)) },
+                    onDismiss = { onEvent(FleetPlanningEvent.DestinationSuggestionsDismissed(destination.id)) },
+                    onSuggestionSelected = { onEvent(FleetPlanningEvent.DestinationSuggestionSelected(destination.id, it)) },
+                    onClear = { onEvent(FleetPlanningEvent.ClearDestinationLocation(destination.id)) },
+                    placeholder = "Search for a place",
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = { onEvent(FleetPlanningEvent.RemoveDestination(destination.id)) }) {
                     Icon(Icons.Filled.Delete, contentDescription = "Remove destination")
                 }
             }
+
+            if (destination.isConfirmed) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 4.dp),
+                    )
+                    Text(
+                        text = "Location confirmed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            } else if (destination.query.isNotBlank()) {
+                Text(
+                    text = "Not confirmed - select a suggestion above, or enter coordinates below",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = destination.demand,
@@ -106,7 +151,7 @@ private fun DestinationRow(destination: DestinationInput, onEvent: (FleetPlannin
                     },
                     label = { Text("Demand") },
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedTextField(
@@ -118,29 +163,7 @@ private fun DestinationRow(destination: DestinationInput, onEvent: (FleetPlannin
                     },
                     label = { Text("Service (min)") },
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = destination.latitude,
-                    onValueChange = {
-                        onEvent(FleetPlanningEvent.DestinationFieldChanged(destination.id, DestinationField.LATITUDE, it))
-                    },
-                    label = { Text("Latitude (optional)") },
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = destination.longitude,
-                    onValueChange = {
-                        onEvent(FleetPlanningEvent.DestinationFieldChanged(destination.id, DestinationField.LONGITUDE, it))
-                    },
-                    label = { Text("Longitude (optional)") },
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -169,6 +192,12 @@ private fun DestinationRow(destination: DestinationInput, onEvent: (FleetPlannin
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
+            }
+
+            if (!destination.isConfirmed) {
+                ManualCoordinateEntry { coordinate ->
+                    onEvent(FleetPlanningEvent.ManualCoordinateEntered(destination.id, coordinate))
+                }
             }
         }
     }

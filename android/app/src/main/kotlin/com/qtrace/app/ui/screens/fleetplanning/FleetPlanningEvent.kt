@@ -1,5 +1,6 @@
 package com.qtrace.app.ui.screens.fleetplanning
 
+import com.qtrace.app.domain.model.Coordinate
 import com.qtrace.app.domain.model.LocationSuggestion
 import com.qtrace.app.domain.model.OptimizationObjective
 import com.qtrace.app.domain.model.ScenarioType
@@ -22,6 +23,12 @@ sealed class FleetPlanningEvent {
     data class RemoveDestination(val id: String) : FleetPlanningEvent()
     data class DestinationFieldChanged(val id: String, val field: DestinationField, val value: String) :
         FleetPlanningEvent()
+    data class DestinationQueryChanged(val id: String, val query: String) : FleetPlanningEvent()
+    data class DestinationFieldFocused(val id: String) : FleetPlanningEvent()
+    data class DestinationSuggestionsDismissed(val id: String) : FleetPlanningEvent()
+    data class DestinationSuggestionSelected(val id: String, val suggestion: LocationSuggestion) : FleetPlanningEvent()
+    data class ClearDestinationLocation(val id: String) : FleetPlanningEvent()
+    data class ManualCoordinateEntered(val id: String, val coordinate: Coordinate) : FleetPlanningEvent()
     data class CsvImported(val csvContent: String) : FleetPlanningEvent()
     data object CsvImportErrorDismissed : FleetPlanningEvent()
 

@@ -4,7 +4,7 @@ Pipeline (see docs/qisa-roadmap.md for the planned future per-vehicle solver):
 
     Destinations (+ geocoding for any missing coordinates)
         -> RoutingProvider.matrix() once, over depot + all resolved destinations
-        -> fleet-aware K-Means clustering (app.optimization.clustering)
+        -> fleet-aware sweep clustering (app.optimization.clustering)
         -> per vehicle: nearest-neighbor construction (app.optimization.greedy_route)
                         + 2-Opt refinement (app.optimization.two_opt)
         -> RoutingProvider.route() once per vehicle, on its final stop order
@@ -145,7 +145,12 @@ class FleetOptimizationService:
         ]
         demands = [request.destinations[i].demand for i in geocoded_indices]
 
-        assignment = fleet_aware_clusters(destination_points, demands, vehicles, seed=0)
+        assignment = fleet_aware_clusters(
+            destination_points,
+            demands,
+            vehicles,
+            depot=(request.depot.latitude, request.depot.longitude),
+        )
 
         vehicle_routes: list[VehicleRouteResult] = []
         for vehicle_index, local_indices in enumerate(assignment.vehicle_assignments):

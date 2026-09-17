@@ -72,6 +72,7 @@ private fun VehicleRow(vehicle: VehicleSpecInput, onEvent: (FleetPlanningEvent) 
                     label = "Number",
                     onValueChange = { onEvent(FleetPlanningEvent.VehicleFieldChanged(vehicle.id, VehicleField.COUNT, it)) },
                     modifier = Modifier.weight(1f),
+                    placeholder = "1",
                 )
                 NumberField(
                     value = vehicle.capacity,
@@ -113,11 +114,18 @@ private fun VehicleRow(vehicle: VehicleSpecInput, onEvent: (FleetPlanningEvent) 
 }
 
 @Composable
-private fun NumberField(value: String, label: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun NumberField(
+    value: String,
+    label: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier,

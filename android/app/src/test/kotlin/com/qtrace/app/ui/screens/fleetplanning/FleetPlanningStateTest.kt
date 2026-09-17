@@ -58,17 +58,27 @@ class FleetPlanningStateTest {
     }
 
     @Test
-    fun `destination with only manual coordinates is valid without an address`() {
-        val destination = DestinationInput(name = "Depot Stop", latitude = "13.05", longitude = "80.24")
+    fun `destination with a confirmed coordinate is valid without an address`() {
+        val destination = DestinationInput(name = "Depot Stop", coordinate = Coordinate(13.05, 80.24))
 
         assertTrue(destination.isValid)
+        assertTrue(destination.isConfirmed)
     }
 
     @Test
-    fun `destination with unparseable coordinates and no address is invalid`() {
-        val destination = DestinationInput(name = "Bad Row", latitude = "not-a-number", longitude = "also-not")
+    fun `destination with neither a coordinate nor an address is invalid and unconfirmed`() {
+        val destination = DestinationInput(name = "Bad Row", coordinate = null, address = null)
 
         assertFalse(destination.isValid)
+        assertFalse(destination.isConfirmed)
+    }
+
+    @Test
+    fun `destination with only a typed query and no confirmed selection is invalid`() {
+        val destination = DestinationInput(query = "T Nagar")
+
+        assertFalse(destination.isValid)
+        assertFalse(destination.isConfirmed)
     }
 
     @Test

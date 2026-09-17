@@ -65,7 +65,7 @@ fun ResultsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit
             MapLibreFleetMap(
                 styleUrl = BuildConfig.MAP_STYLE_URL,
                 depot = state.depot?.coordinate,
-                destinations = state.destinations.mapNotNull { it.effectiveCoordinate },
+                destinations = state.destinations.mapNotNull { it.coordinate },
                 vehicleRoutes = result.vehicleRoutes,
                 modifier = Modifier.fillMaxSize(),
             )
