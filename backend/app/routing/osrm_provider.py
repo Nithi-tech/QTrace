@@ -15,6 +15,8 @@ from app.routing.exceptions import (
     RoutingProviderTimeoutError,
     RoutingProviderUnavailableError,
 )
+from app.routing.map_matching import RoadMatchingProvider
+from app.schemas.map_matching import MatchedEdge, MatchedLeg, SnapResult, TimedCoordinate, TraceMatchResult
 from app.schemas.routing import Coordinate, MatrixResult, RouteResult
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ def _format_coordinates(coordinates: list[Coordinate]) -> str:
     return ";".join(f"{c.longitude},{c.latitude}" for c in coordinates)
 
 
-class OSRMProvider(RoutingProvider):
+class OSRMProvider(RoutingProvider, RoadMatchingProvider):
     def __init__(
         self,
         base_url: str,
@@ -75,6 +77,118 @@ class OSRMProvider(RoutingProvider):
             distances_meters=payload["distances"],
             durations_seconds=payload["durations"],
         )
+
+    async def match_trace(self, points: list[TimedCoordinate]) -> TraceMatchResult:
+        """Map-matches a continuous, timestamped GPS trace onto real OSM road-graph
+        edges via OSRM's Match API (verified live against the public demo server -
+        docs/TRAFFIC_ARCHITECTURE.md). Segment geometry is approximated as the whole
+        matching's polyline, shared across every edge discovered within it - OSRM's
+        match response does not reliably expose per-micro-edge geometry without
+        `steps=true`'s much larger response, a documented simplification, not a
+        fabrication (every edge's node IDs and speed are still exact, real, matched
+        values). Never raises - an unmatchable trace or a provider failure both
+        report `matched=False` so ingestion can degrade gracefully (CLAUDE.md #21, #40).
+        """
+        if len(points) < 2:
+            return await self._match_single_point(points)
+
+        coords_param = ";".join(f"{p.longitude},{p.latitude}" for p in points)
+        timestamps_param = ";".join(str(int(p.timestamp.timestamp())) for p in points)
+        path = f"/match/v1/{self._profile}/{coords_param}"
+        params = {
+            "timestamps": timestamps_param,
+            "annotations": "true",
+            "geometries": "geojson",
+            "overview": "full",
+        }
+
+        try:
+            payload = await self._get(path, params)
+        except (RoutingProviderTimeoutError, RoutingProviderUnavailableError) as exc:
+            logger.warning("OSRM map-matching unavailable: %s", exc)
+            return TraceMatchResult(matched=False)
+
+        if payload.get("code") != "Ok" or not payload.get("matchings"):
+            return TraceMatchResult(matched=False)
+
+        tracepoints = payload.get("tracepoints") or []
+        legs_out: list[MatchedLeg] = []
+
+        for matching_index, matching in enumerate(payload["matchings"]):
+            geometry = matching.get("geometry")
+            waypoint_to_point: dict[int, TimedCoordinate] = {}
+            for original_index, tracepoint in enumerate(tracepoints):
+                if tracepoint is None or tracepoint.get("matchings_index") != matching_index:
+                    continue
+                waypoint_to_point[tracepoint["waypoint_index"]] = points[original_index]
+
+            for leg_index, leg in enumerate(matching.get("legs", [])):
+                start_point = waypoint_to_point.get(leg_index)
+                end_point = waypoint_to_point.get(leg_index + 1)
+                if start_point is None or end_point is None:
+                    continue  # can't compute an observed duration without both real timestamps
+
+                annotation = leg.get("annotation") or {}
+                nodes = annotation.get("nodes") or []
+                speeds = annotation.get("speed") or []
+                edges = [
+                    MatchedEdge(
+                        node_a=round(nodes[i]),
+                        node_b=round(nodes[i + 1]),
+                        geometry=geometry,
+                        profile_speed_mps=speeds[i] if i < len(speeds) else None,
+                    )
+                    for i in range(len(nodes) - 1)
+                ]
+                if not edges:
+                    continue
+
+                observed_duration = (end_point.timestamp - start_point.timestamp).total_seconds()
+                distance_meters = leg.get("distance", 0.0)
+                observed_speed = distance_meters / observed_duration if observed_duration > 0 else None
+                legs_out.append(
+                    MatchedLeg(
+                        edges=edges,
+                        distance_meters=distance_meters,
+                        observed_duration_seconds=observed_duration,
+                        observed_speed_mps=observed_speed,
+                        start_timestamp=start_point.timestamp,
+                        end_timestamp=end_point.timestamp,
+                    )
+                )
+
+        return TraceMatchResult(matched=True, legs=legs_out)
+
+    async def _match_single_point(self, points: list[TimedCoordinate]) -> TraceMatchResult:
+        if not points:
+            return TraceMatchResult(matched=False)
+        snap = await self.snap_point(Coordinate(latitude=points[0].latitude, longitude=points[0].longitude))
+        # A single point has no second timestamp to measure elapsed time against, so
+        # there is no observed speed to report - matching succeeds, but with no legs.
+        return TraceMatchResult(matched=snap.matched, legs=[])
+
+    async def snap_point(self, coordinate: Coordinate) -> SnapResult:
+        path = f"/nearest/v1/{self._profile}/{coordinate.longitude},{coordinate.latitude}"
+        params = {"number": 1}
+
+        try:
+            payload = await self._get(path, params)
+        except (RoutingProviderTimeoutError, RoutingProviderUnavailableError) as exc:
+            logger.warning("OSRM nearest-point snap unavailable: %s", exc)
+            return SnapResult(matched=False)
+
+        if payload.get("code") != "Ok" or not payload.get("waypoints"):
+            return SnapResult(matched=False)
+
+        waypoint = payload["waypoints"][0]
+        nodes = waypoint.get("nodes")
+        if not nodes or len(nodes) < 2:
+            return SnapResult(matched=False)
+
+        location = waypoint.get("location")
+        snapped = Coordinate(latitude=location[1], longitude=location[0]) if location else None
+        edge = MatchedEdge(node_a=round(nodes[0]), node_b=round(nodes[1]))
+        return SnapResult(matched=True, edge=edge, snapped_coordinate=snapped)
 
     async def _get(self, path: str, params: dict) -> dict:
         url = f"{self._base_url}{path}"

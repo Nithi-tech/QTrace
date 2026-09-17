@@ -144,7 +144,6 @@ See [android/README.md](android/README.md) for required `local.properties` value
 
 - [System Architecture](docs/architecture.md)
 - [OSRM Routing Integration](docs/OSRM_INTEGRATION.md)
-- [QISA Roadmap (future multi-vehicle optimizer)](docs/qisa-roadmap.md)
 - [Mathematical Formulation](docs/math-formulation.md)
 - [Original Problem Statement (hackathon source)](docs/problem-statement.md)
 - [Demonstration Plan](docs/demonstration.md)
