@@ -6,7 +6,12 @@ returns a tracking_code per vehicle and a planning_session_id.
 from fastapi import APIRouter, Depends
 
 from app.api.deps import get_tracking_service
-from app.schemas.tracking import AssignedRoute, FleetTrackingOverview, LocationPingRequest, VehicleTrackingStatus
+from app.schemas.tracking import (
+    AssignedRoute,
+    FleetTrackingOverview,
+    LocationPingRequest,
+    VehicleTrackingStatus,
+)
 from app.services.tracking_service import TrackingService
 
 router = APIRouter(prefix="/tracking", tags=["tracking"])

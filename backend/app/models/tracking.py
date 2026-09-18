@@ -27,7 +27,9 @@ class TrackingSession(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     tracking_code: Mapped[str] = mapped_column(String(12), nullable=False, unique=True, index=True)
-    job_id: Mapped[str] = mapped_column(String(36), ForeignKey("optimization_jobs.id"), nullable=False, index=True)
+    job_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("optimization_jobs.id"), nullable=False, index=True
+    )
     vehicle_index: Mapped[int] = mapped_column(Integer, nullable=False)
 
     pings: Mapped[list["LocationPing"]] = relationship(

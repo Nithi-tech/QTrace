@@ -4,11 +4,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.deps import get_geocoding_provider, get_routing_provider
+from app.api.deps import (
+    get_geocoding_provider,
+    get_matching_provider,
+    get_routing_provider,
+    get_tomtom_traffic_provider,
+)
 from app.core.db import get_db
 from app.main import app
 from app.models import Base
 from app.schemas.geocoding import GeocodingSuggestion
+from app.schemas.map_matching import SnapResult, TraceMatchResult
 from app.schemas.routing import Coordinate, MatrixResult, RouteResult
 
 
@@ -33,6 +39,17 @@ class StubGeocodingProvider:
         return [GeocodingSuggestion(label=f"Result for {query}", coordinate=coordinate)]
 
 
+class StubMatchingProvider:
+    """Never matched by default - traffic API tests then exercise the honest
+    UNAVAILABLE path (CLAUDE.md #44 - no live OSRM calls from automated tests)."""
+
+    async def match_trace(self, points):
+        return TraceMatchResult(matched=False, legs=[])
+
+    async def snap_point(self, coordinate):
+        return SnapResult(matched=False)
+
+
 @pytest.fixture()
 def client():
     engine = create_engine(
@@ -51,6 +68,8 @@ def client():
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_routing_provider] = lambda: StubRoutingProvider()
     app.dependency_overrides[get_geocoding_provider] = lambda: StubGeocodingProvider()
+    app.dependency_overrides[get_matching_provider] = lambda: StubMatchingProvider()
+    app.dependency_overrides[get_tomtom_traffic_provider] = lambda: None
 
     with TestClient(app) as test_client:
         yield test_client

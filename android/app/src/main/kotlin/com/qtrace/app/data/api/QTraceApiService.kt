@@ -8,6 +8,7 @@ import com.qtrace.app.data.api.dto.GeocodingSuggestionDto
 import com.qtrace.app.data.api.dto.LocationPingRequestDto
 import com.qtrace.app.data.api.dto.OptimizationJobResponseDto
 import com.qtrace.app.data.api.dto.RouteRequestDto
+import com.qtrace.app.data.api.dto.TrafficAreaResponseDto
 import com.qtrace.app.data.api.dto.VehicleTrackingStatusDto
 import retrofit2.Response
 import retrofit2.http.Body
@@ -45,4 +46,12 @@ interface QTraceApiService {
 
     @GET("api/v1/tracking/jobs/{jobId}")
     suspend fun getFleetTrackingOverview(@Path("jobId") jobId: String): Response<FleetTrackingOverviewDto>
+
+    @GET("api/v1/traffic/area")
+    suspend fun getTrafficArea(
+        @Query("min_lat") minLat: Double,
+        @Query("min_lon") minLon: Double,
+        @Query("max_lat") maxLat: Double,
+        @Query("max_lon") maxLon: Double,
+    ): Response<TrafficAreaResponseDto>
 }

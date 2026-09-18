@@ -13,9 +13,32 @@
     <string name="result_duration_label">Estimated time</string>
     <string name="result_algorithm_label">Algorithm</string>
     <string name="result_status_label">Status</string>
+    <string name="result_traffic_label">Traffic</string>
 
     <string name="status_direct_route">Route calculated successfully</string>
     <string name="status_optimized">Optimized successfully</string>
+
+    <string name="traffic_level_low">Low</string>
+    <string name="traffic_level_medium">Medium</string>
+    <string name="traffic_level_high">High</string>
+    <string name="traffic_level_unknown">Present</string>
+    <string name="traffic_status_unavailable">Unavailable</string>
+    <string name="traffic_free_flow_format">Free-flow time: %1$s (traffic added the rest)</string>
+
+    <string name="traffic_toggle_label">Traffic</string>
+    <string name="traffic_legend_title">Traffic</string>
+    <string name="traffic_level_free_flow">Free flow</string>
+    <string name="traffic_level_moderate">Moderate</string>
+    <string name="traffic_level_heavy">Heavy</string>
+    <string name="traffic_level_very_heavy">Very heavy</string>
+    <string name="traffic_level_severe">Severe</string>
+    <string name="traffic_layer_loading">Updating traffic…</string>
+    <string name="traffic_layer_live_format">Live traffic · %1$s · updated %2$s ago</string>
+    <string name="traffic_layer_live_just_now_format">Live traffic · %1$s · updated just now</string>
+    <string name="traffic_layer_unavailable">Traffic unavailable</string>
+    <string name="traffic_source_tomtom">TomTom</string>
+    <string name="traffic_updated_seconds_ago">%1$ds</string>
+    <string name="traffic_updated_minutes_ago">%1$dm</string>
 
     <string name="loading_searching_location">Finding location…</string>
     <string name="loading_calculating_route">Calculating road route…</string>

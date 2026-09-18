@@ -30,7 +30,7 @@ and operational intelligence.
 ```
 Android App --HTTPS/JSON--> FastAPI Backend --> Optimization Service (QPSO, OR-Tools baseline)
                                              --> Routing Service --> RoutingProvider (OSRM / TomTom)
-                                             --> Traffic Service
+                                             --> Traffic Service (TomTom live -> QTrace crowd -> historical -> unavailable)
                                              --> PostgreSQL/PostGIS
                                              --> Redis + RQ workers (long-running optimization jobs)
 ```
@@ -39,8 +39,9 @@ Road-network routing (shortest paths, distance/time matrices) is delegated to
 external providers (OSRM for development, TomTom for production) behind a
 `RoutingProvider` abstraction — QTrace does not maintain its own city-graph
 routing engine. QPSO and the OR-Tools baseline optimize **stop ordering and
-vehicle assignment** (TSP/VRP/CVRP/CVRPTW) on top of the distance/time matrix
-a provider returns.
+vehicle assignment** (TSP/VRP/CVRP/CVRPTW) on top of a cost matrix blended from
+that routing data and real-time traffic (see
+[docs/TRAFFIC_ARCHITECTURE.md](docs/TRAFFIC_ARCHITECTURE.md)).
 
 Full details: [docs/architecture.md](docs/architecture.md)
 
@@ -144,6 +145,7 @@ See [android/README.md](android/README.md) for required `local.properties` value
 
 - [System Architecture](docs/architecture.md)
 - [OSRM Routing Integration](docs/OSRM_INTEGRATION.md)
+- [Real-Time Traffic Intelligence](docs/TRAFFIC_ARCHITECTURE.md)
 - [QISA Roadmap (future multi-vehicle optimizer)](docs/qisa-roadmap.md)
 - [Mathematical Formulation](docs/math-formulation.md)
 - [Original Problem Statement (hackathon source)](docs/problem-statement.md)
