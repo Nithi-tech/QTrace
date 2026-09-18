@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.qtrace.app.BuildConfig
 import com.qtrace.app.domain.model.VehicleRouteResult
+import com.qtrace.app.domain.model.VehicleTrackingStatus
 import com.qtrace.app.ui.components.FleetRouteLegend
 import com.qtrace.app.ui.components.FleetStopMarker
 import com.qtrace.app.ui.components.MapLibreFleetMap
@@ -88,13 +90,7 @@ fun ResultsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit
             }
         }
 
-        result.planningSessionId?.let { sessionId ->
-            CopyableIdRow(
-                label = "Session ID (for Admin tracking)",
-                value = sessionId,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-        }
+        val liveByVehicleIndex = state.liveTracking?.vehicles?.associateBy { it.vehicleIndex }.orEmpty()
 
         Box(modifier = Modifier.weight(1.2f).fillMaxWidth()) {
             MapLibreFleetMap(
@@ -113,6 +109,16 @@ fun ResultsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit
                         vehicleIndex = vehicleIndex.takeIf { it >= 0 },
                         visitOrder = visitOrder,
                         isUnassigned = index in result.unassignedDestinationIndices,
+                    )
+                } + result.vehicleRoutes.mapIndexedNotNull { index, route ->
+                    // Each vehicle's live position (once its driver starts reporting one),
+                    // colored to match its own route - this is the "admin" view: it's just the
+                    // same map this fleet was planned on, now also showing where things are.
+                    val location = liveByVehicleIndex[route.vehicleIndex]?.currentLocation ?: return@mapIndexedNotNull null
+                    FleetStopMarker(
+                        coordinate = location,
+                        vehicleIndex = index,
+                        isUnassigned = liveByVehicleIndex[route.vehicleIndex]?.isOffRoute == true,
                     )
                 },
                 vehicleRoutes = result.vehicleRoutes,
@@ -134,7 +140,9 @@ fun ResultsStep(state: FleetPlanningState, onEvent: (FleetPlanningEvent) -> Unit
             modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            itemsIndexed(result.vehicleRoutes) { index, route -> VehicleRouteCard(index = index, route = route) }
+            itemsIndexed(result.vehicleRoutes) { index, route ->
+                VehicleRouteCard(index = index, route = route, liveStatus = liveByVehicleIndex[route.vehicleIndex])
+            }
         }
 
         Button(
@@ -181,7 +189,7 @@ private fun StatCard(icon: androidx.compose.ui.graphics.vector.ImageVector, labe
 }
 
 @Composable
-private fun VehicleRouteCard(index: Int, route: VehicleRouteResult) {
+private fun VehicleRouteCard(index: Int, route: VehicleRouteResult, liveStatus: VehicleTrackingStatus?) {
     val vehicleColor = Color(android.graphics.Color.parseColor(colorForVehicle(index)))
     val utilization = route.capacityUtilization.coerceIn(0.0, 1.0)
 
@@ -221,6 +229,10 @@ private fun VehicleRouteCard(index: Int, route: VehicleRouteResult) {
                     IconMetric(Icons.Filled.Route, formatDistance(route.distanceMeters))
                     IconMetric(Icons.Filled.Schedule, formatDuration(route.durationSeconds))
                     IconMetric(Icons.Filled.Payments, String.format(Locale.getDefault(), "%.2f", route.estimatedCost))
+                }
+
+                if (liveStatus != null) {
+                    LiveStatusRow(liveStatus = liveStatus, vehicleColor = vehicleColor)
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -268,6 +280,39 @@ private fun VehicleRouteCard(index: Int, route: VehicleRouteResult) {
                 }
             }
         }
+    }
+}
+
+/** This vehicle's live status - present once its driver has opened the Drivers page and reported
+ * at least one location. Distinct green "on route" vs. red "off route" coloring mirrors the map's
+ * marker coloring for the same vehicle. */
+@Composable
+private fun LiveStatusRow(liveStatus: VehicleTrackingStatus, vehicleColor: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .background(
+                if (liveStatus.isOffRoute) MaterialTheme.colorScheme.errorContainer else vehicleColor.copy(alpha = 0.14f),
+                RoundedCornerShape(10.dp),
+            )
+            .padding(8.dp),
+    ) {
+        Icon(
+            if (liveStatus.isOffRoute) Icons.Filled.Warning else Icons.Filled.LocationOn,
+            contentDescription = null,
+            tint = if (liveStatus.isOffRoute) MaterialTheme.colorScheme.onErrorContainer else vehicleColor,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = if (liveStatus.isOffRoute) {
+                "Off planned route - travelled ${formatDistance(liveStatus.distanceTravelledMeters)} so far"
+            } else {
+                "Live: travelled ${formatDistance(liveStatus.distanceTravelledMeters)} so far"
+            },
+            style = MaterialTheme.typography.labelMedium,
+            color = if (liveStatus.isOffRoute) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

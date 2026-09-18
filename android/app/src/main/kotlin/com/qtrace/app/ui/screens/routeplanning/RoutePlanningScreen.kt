@@ -36,7 +36,6 @@ import com.qtrace.app.ui.components.RouteResultPanel
 fun RoutePlanningScreen(
     onNavigateToFleetPlanning: () -> Unit = {},
     onNavigateToDriverTracking: () -> Unit = {},
-    onNavigateToAdminTracking: () -> Unit = {},
     viewModel: RoutePlanningViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -46,7 +45,6 @@ fun RoutePlanningScreen(
             Header(
                 onNavigateToFleetPlanning = onNavigateToFleetPlanning,
                 onNavigateToDriverTracking = onNavigateToDriverTracking,
-                onNavigateToAdminTracking = onNavigateToAdminTracking,
             )
 
             RoutePlanningInputs(state = state, onEvent = viewModel::onEvent)
@@ -110,9 +108,12 @@ fun RoutePlanningScreen(
 private fun Header(
     onNavigateToFleetPlanning: () -> Unit,
     onNavigateToDriverTracking: () -> Unit,
-    onNavigateToAdminTracking: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column {
             Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
             Text(
@@ -127,9 +128,6 @@ private fun Header(
             }
             TextButton(onClick = onNavigateToDriverTracking) {
                 Text(stringResource(R.string.driver_tracking_action))
-            }
-            TextButton(onClick = onNavigateToAdminTracking) {
-                Text(stringResource(R.string.admin_tracking_action))
             }
         }
     }

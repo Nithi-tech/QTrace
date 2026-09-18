@@ -2,6 +2,7 @@ package com.qtrace.app.ui.screens.fleetplanning
 
 import com.qtrace.app.domain.model.Coordinate
 import com.qtrace.app.domain.model.FleetRouteResult
+import com.qtrace.app.domain.model.FleetTrackingOverview
 import com.qtrace.app.domain.model.LocationSuggestion
 import com.qtrace.app.domain.model.OptimizationObjective
 import com.qtrace.app.domain.model.QTraceError
@@ -89,6 +90,11 @@ data class FleetPlanningState(
 
     val isSubmitting: Boolean = false,
     val result: FleetRouteResult? = null,
+    /** Live status (current location, distance travelled, off-route) per vehicle for the
+     * just-generated [result] - whoever planned this fleet sees it live right here, no separate
+     * admin login or id entry needed. Refreshed on a poll while this step is showing (see
+     * FleetPlanningViewModel); null until the first refresh lands. */
+    val liveTracking: FleetTrackingOverview? = null,
 
     val error: QTraceError? = null,
     val isOffline: Boolean = false,

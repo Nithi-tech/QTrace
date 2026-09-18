@@ -9,6 +9,7 @@ import com.qtrace.app.domain.model.QTraceResult
 import com.qtrace.app.domain.model.VehicleSpec
 import com.qtrace.app.domain.repository.FleetRepository
 import com.qtrace.app.domain.repository.GeocodingRepository
+import com.qtrace.app.domain.repository.TrackingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +32,7 @@ import javax.inject.Inject
 
 private const val SEARCH_DEBOUNCE_MS = 350L
 private const val MIN_QUERY_LENGTH = 2
+private const val LIVE_TRACKING_POLL_INTERVAL_MS = 8_000L
 
 /** Owns FleetPlanningState and reacts to FleetPlanningEvent (CLAUDE.md #6.2), mirroring
  * RoutePlanningViewModel's pattern for the new multi-vehicle wizard flow. */
@@ -39,6 +41,7 @@ private const val MIN_QUERY_LENGTH = 2
 class FleetPlanningViewModel @Inject constructor(
     private val geocodingRepository: GeocodingRepository,
     private val fleetRepository: FleetRepository,
+    private val trackingRepository: TrackingRepository,
     connectivityObserver: ConnectivityObserver,
 ) : ViewModel() {
 
@@ -46,6 +49,7 @@ class FleetPlanningViewModel @Inject constructor(
     val state: StateFlow<FleetPlanningState> = _state.asStateFlow()
 
     private val depotQueryFlow = MutableStateFlow("")
+    private var liveTrackingJob: Job? = null
 
     // Destinations are a dynamic list (rows added/removed at runtime), so each row's debounced
     // search is a cancellable coroutine Job keyed by that row's id, rather than a fixed
@@ -157,7 +161,10 @@ class FleetPlanningViewModel @Inject constructor(
                 generateRoutes()
             }
             FleetPlanningEvent.ErrorDismissed -> _state.update { it.copy(error = null) }
-            FleetPlanningEvent.StartOverClicked -> _state.update { FleetPlanningState() }
+            FleetPlanningEvent.StartOverClicked -> {
+                liveTrackingJob?.cancel()
+                _state.update { FleetPlanningState() }
+            }
         }
     }
 
@@ -275,12 +282,38 @@ class FleetPlanningViewModel @Inject constructor(
                 objective = current.objective,
             )
             when (val result = fleetRepository.planFleetRoutes(request)) {
-                is QTraceResult.Success -> _state.update {
-                    it.copy(isSubmitting = false, result = result.data, step = FleetPlanningStep.RESULTS)
+                is QTraceResult.Success -> {
+                    _state.update {
+                        it.copy(isSubmitting = false, result = result.data, step = FleetPlanningStep.RESULTS)
+                    }
+                    startLiveTracking(result.data.planningSessionId)
                 }
                 is QTraceResult.Failure -> _state.update { it.copy(isSubmitting = false, error = result.error) }
             }
         }
+    }
+
+    /** Whoever just generated this fleet's routes already IS the admin for it - there is no
+     * separate admin login or session-id entry. As soon as routes exist, this starts polling
+     * that same planning run's live status so ResultsStep can show current vehicle locations,
+     * distance travelled, and off-route warnings without the user doing anything else. */
+    private fun startLiveTracking(sessionId: String?) {
+        if (sessionId == null) return
+        liveTrackingJob?.cancel()
+        liveTrackingJob = viewModelScope.launch {
+            while (true) {
+                when (val result = trackingRepository.getFleetOverview(sessionId)) {
+                    is QTraceResult.Success -> _state.update { it.copy(liveTracking = result.data) }
+                    is QTraceResult.Failure -> Unit // transient - keep the last-known-good overview and retry
+                }
+                delay(LIVE_TRACKING_POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        liveTrackingJob?.cancel()
+        super.onCleared()
     }
 }
 

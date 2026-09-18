@@ -44,7 +44,5 @@
     <string name="content_description_fleet_map">Map showing depot, destinations, and vehicle routes</string>
 
     <string name="driver_tracking_action">Driver</string>
-    <string name="admin_tracking_action">Admin</string>
     <string name="content_description_driver_map">Map showing your assigned route and current location</string>
-    <string name="content_description_admin_map">Map showing every vehicle\'s planned route and current location</string>
 </resources>
