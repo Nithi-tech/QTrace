@@ -3,6 +3,19 @@ package com.qtrace.app.data.api.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Mirrors backend/app/schemas/traffic.py::TrafficStatus - the single source of truth for
+ * whether real traffic data was used, and from where (docs/TRAFFIC_ARCHITECTURE.md). */
+@Serializable
+data class TrafficStatusDto(
+    val enabled: Boolean,
+    val available: Boolean,
+    val status: String,
+    val source: String? = null,
+    val confidence: Double? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    val level: String? = null,
+)
+
 /** Mirrors backend/app/schemas/optimization.py::OptimizationRouteResult. */
 @Serializable
 data class OptimizationRouteResultDto(
@@ -13,6 +26,8 @@ data class OptimizationRouteResultDto(
     @SerialName("objective_value") val objectiveValue: Double? = null,
     @SerialName("optimization_runtime_ms") val optimizationRuntimeMs: Double? = null,
     val explanation: String,
+    val traffic: TrafficStatusDto = TrafficStatusDto(enabled = false, available = false, status = "UNAVAILABLE"),
+    @SerialName("traffic_impact_seconds") val trafficImpactSeconds: Double? = null,
 )
 
 /** Mirrors backend/app/schemas/optimization.py::OptimizationJobResponse. */

@@ -73,9 +73,7 @@ def _bearing_from_depot(depot: tuple[float, float], point: tuple[float, float]) 
     return degrees(atan2(d_lon, d_lat)) % 360.0
 
 
-def _split_into_k_groups_by_demand(
-    order: list[int], demands: list[float], k: int
-) -> list[list[int]]:
+def _split_into_k_groups_by_demand(order: list[int], demands: list[float], k: int) -> list[list[int]]:
     """Cut an angularly-sorted destination order into exactly `k` contiguous,
     demand-balanced groups (each destination's group is a slice of `order`,
     so group membership stays a directional wedge). Assumes len(order) >= k
@@ -219,9 +217,11 @@ def _shed_overflow(
         if other_candidates:
             best = min(
                 other_candidates,
-                key=lambda v: dist(destination_points[boundary], destination_points[vehicle_assignments[v][0]])
-                if vehicle_assignments[v]
-                else 0.0,
+                key=lambda v: (
+                    dist(destination_points[boundary], destination_points[vehicle_assignments[v][0]])
+                    if vehicle_assignments[v]
+                    else 0.0
+                ),
             )
             vehicle_assignments[vehicle].remove(boundary)
             vehicle_assignments[best].append(boundary)

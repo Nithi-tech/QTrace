@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,6 +31,9 @@ import com.qtrace.app.ui.components.LocationSearchField
 import com.qtrace.app.ui.components.MapLibreRouteMap
 import com.qtrace.app.ui.components.OfflineBanner
 import com.qtrace.app.ui.components.RouteResultPanel
+import com.qtrace.app.ui.components.TrafficLegend
+import com.qtrace.app.ui.components.TrafficStatusLabel
+import com.qtrace.app.ui.components.TrafficToggleButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,14 +65,47 @@ fun RoutePlanningScreen(
                 )
             }
 
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                 MapLibreRouteMap(
                     styleUrl = BuildConfig.MAP_STYLE_URL,
                     startLocation = state.startLocation?.coordinate,
                     destinationLocation = state.destinationLocation?.coordinate,
                     routeGeometry = state.optimizationResult?.route?.geometry.orEmpty(),
                     modifier = Modifier.fillMaxSize(),
+                    trafficEnabled = state.trafficEnabled,
+                    trafficSegments = state.trafficSegments,
+                    onVisibleBoundsChanged = { viewModel.onEvent(RoutePlanningEvent.MapBoundsChanged(it)) },
                 )
+
+                Column(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TrafficToggleButton(
+                        enabled = state.trafficEnabled,
+                        onToggle = { viewModel.onEvent(RoutePlanningEvent.TrafficToggled) },
+                    )
+                    if (state.trafficEnabled) {
+                        TrafficLegend()
+                    }
+                }
+
+                if (state.trafficEnabled) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        tonalElevation = 2.dp,
+                    ) {
+                        TrafficStatusLabel(
+                            status = state.trafficLayerStatus,
+                            source = state.trafficSource,
+                            updatedAt = state.trafficUpdatedAt,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
+                }
 
                 if (state.isPlanningRoute) {
                     Surface(

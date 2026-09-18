@@ -129,7 +129,9 @@ class TrackingService:
             route = _find_vehicle_route(job.result, session.vehicle_index)
             if route is None:
                 continue  # stale session referencing a route that no longer exists in the job result
-            vehicles.append(self._build_status(session.tracking_code, session.vehicle_index, session.id, route))
+            vehicles.append(
+                self._build_status(session.tracking_code, session.vehicle_index, session.id, route)
+            )
 
         return FleetTrackingOverview(job_id=job_id, vehicles=vehicles)
 

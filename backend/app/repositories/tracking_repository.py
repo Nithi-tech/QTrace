@@ -27,7 +27,12 @@ class TrackingRepository:
         return self._db.get(OptimizationJob, job_id)
 
     def list_sessions_for_job(self, job_id: str) -> list[TrackingSession]:
-        return self._db.query(TrackingSession).filter_by(job_id=job_id).order_by(TrackingSession.vehicle_index).all()
+        return (
+            self._db.query(TrackingSession)
+            .filter_by(job_id=job_id)
+            .order_by(TrackingSession.vehicle_index)
+            .all()
+        )
 
     def add_ping(self, session_id: str, latitude: float, longitude: float) -> LocationPing:
         ping = LocationPing(

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.models.optimization_job import OptimizationJobStatus
 from app.schemas.routing import RouteRequest, RouteResult
+from app.schemas.traffic import TrafficStatus
 
 # origin, destination, and 0+ intermediate stops (CLAUDE.md #8.2 - a TSP-path
 # variant of VRP; CVRP/CVRPTW constraints are not yet implemented).
@@ -23,6 +24,12 @@ class OptimizationRouteResult(BaseModel):
     objective_value: float | None = None
     optimization_runtime_ms: float | None = None
     explanation: str
+    traffic: TrafficStatus
+    traffic_impact_seconds: float | None = Field(
+        default=None,
+        description="Estimated extra travel time from matched live/historical traffic. Only populated "
+        "when traffic.available is true - never fabricated for unavailable data (CLAUDE.md #68).",
+    )
 
 
 class OptimizationJobResponse(BaseModel):

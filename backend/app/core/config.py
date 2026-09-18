@@ -40,6 +40,57 @@ class Settings(BaseSettings):
     # (CLAUDE.md #27 - do not assume unlimited provider capacity).
     max_route_stops: int = Field(default=25)
 
+    # Real-time traffic intelligence (docs/TRAFFIC_ARCHITECTURE.md). Fallback order:
+    # TomTom live -> QTrace crowd telemetry -> historical baseline -> unavailable.
+    traffic_enabled: bool = Field(default=True)
+    traffic_telemetry_ingestion_enabled: bool = Field(default=True)
+
+    traffic_timeout_seconds: float = Field(default=5.0)
+    traffic_max_retries: int = Field(default=2)
+    # TomTom flow/incident responses are cached in-process (no Redis client exists yet
+    # in this codebase - CLAUDE.md #46 don't add infra a feature doesn't need; a
+    # Redis-backed cache is a documented follow-up, not built in this pass).
+    traffic_cache_ttl_seconds: float = Field(default=60.0)
+
+    # Freshness thresholds (never labeled LIVE/RECENT past these ages).
+    traffic_live_ttl_seconds: float = Field(default=120.0)
+    traffic_recent_ttl_seconds: float = Field(default=300.0)
+    traffic_expired_seconds: float = Field(default=900.0)
+
+    # A crowd-telemetry segment's snapshot isn't trusted until this many independent
+    # observations back it.
+    traffic_min_observations: int = Field(default=3)
+
+    # Corridor width used to match a stop-pair to nearby crowd segments / incidents.
+    traffic_corridor_radius_meters: float = Field(default=150.0)
+
+    traffic_raw_retention_days: int = Field(default=7)
+    traffic_snapshot_retention_days: int = Field(default=30)
+    traffic_max_batch_size: int = Field(default=500)
+
+    # QPSO fitness weights (CLAUDE.md #9) - tunable starting values, not a proven-optimal
+    # combination. Need not sum to 1; only relative magnitude matters to QPSO.
+    distance_weight: float = Field(default=0.4)
+    time_weight: float = Field(default=0.4)
+    traffic_weight: float = Field(default=0.2)
+
+    # Map traffic layer (GET /api/v1/traffic/area, docs/TRAFFIC_ARCHITECTURE.md) - a
+    # Google-Maps-style colored-roads overlay, separate from the QPSO/route-status
+    # fallback hierarchy above. TomTom's flow API is point-based (no bbox endpoint), so
+    # the area is covered by a capped grid of point samples, never one call per pixel
+    # and never an unbounded viewport (CLAUDE.md traffic master-prompt #18/#19).
+    traffic_area_max_points: int = Field(default=36)
+    traffic_area_max_span_degrees: float = Field(default=0.25)
+
+    # 5-level map visualization thresholds on speed_ratio (current/free-flow) - QTrace's
+    # own classification, not any provider's or Google's (CLAUDE.md traffic master-prompt
+    # #8). Descending: >= green -> FREE_FLOW, >= yellow -> MODERATE, >= orange -> HEAVY,
+    # >= red -> VERY_HEAVY, below red -> SEVERE.
+    traffic_map_green_threshold: float = Field(default=0.80)
+    traffic_map_yellow_threshold: float = Field(default=0.60)
+    traffic_map_orange_threshold: float = Field(default=0.40)
+    traffic_map_red_threshold: float = Field(default=0.20)
+
 
 @lru_cache
 def get_settings() -> Settings:

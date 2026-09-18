@@ -10,6 +10,9 @@ import com.qtrace.app.data.api.dto.GeoJsonGeometryDto
 import com.qtrace.app.data.api.dto.GeocodingSuggestionDto
 import com.qtrace.app.data.api.dto.OptimizationRouteResultDto
 import com.qtrace.app.data.api.dto.RouteResultDto
+import com.qtrace.app.data.api.dto.TrafficAreaResponseDto
+import com.qtrace.app.data.api.dto.TrafficSegmentFeatureDto
+import com.qtrace.app.data.api.dto.TrafficStatusDto
 import com.qtrace.app.data.api.dto.VehicleRouteResultDto
 import com.qtrace.app.data.api.dto.VehicleSpecDto
 import com.qtrace.app.data.api.dto.VehicleTrackingStatusDto
@@ -25,6 +28,10 @@ import com.qtrace.app.domain.model.OptimizationResult
 import com.qtrace.app.domain.model.OptimizationStatus
 import com.qtrace.app.domain.model.RouteInfo
 import com.qtrace.app.domain.model.ScenarioType
+import com.qtrace.app.domain.model.TrafficAreaResult
+import com.qtrace.app.domain.model.TrafficInfo
+import com.qtrace.app.domain.model.TrafficSegment
+import com.qtrace.app.domain.model.trafficLevelFrom
 import com.qtrace.app.domain.model.VehicleRouteResult
 import com.qtrace.app.domain.model.VehicleSpec
 import com.qtrace.app.domain.model.VehicleTrackingStatus
@@ -55,6 +62,16 @@ fun RouteResultDto.toDomain(): RouteInfo =
 fun GeocodingSuggestionDto.toDomain(): LocationSuggestion =
     LocationSuggestion(label = label, coordinate = coordinate.toDomain())
 
+fun TrafficStatusDto.toDomain(): TrafficInfo =
+    TrafficInfo(
+        enabled = enabled,
+        available = available,
+        status = status,
+        source = source,
+        confidence = confidence,
+        level = level,
+    )
+
 fun OptimizationRouteResultDto.toDomain(): OptimizationResult =
     OptimizationResult(
         route = route.toDomain(),
@@ -64,6 +81,8 @@ fun OptimizationRouteResultDto.toDomain(): OptimizationResult =
         objectiveValue = objectiveValue,
         optimizationRuntimeMs = optimizationRuntimeMs,
         explanation = explanation,
+        traffic = traffic.toDomain(),
+        trafficImpactSeconds = trafficImpactSeconds,
     )
 
 fun VehicleSpec.toDto(): VehicleSpecDto =
@@ -156,3 +175,23 @@ fun VehicleTrackingStatusDto.toDomain(): VehicleTrackingStatus =
 
 fun FleetTrackingOverviewDto.toDomain(): FleetTrackingOverview =
     FleetTrackingOverview(jobId = jobId, vehicles = vehicles.map { it.toDomain() })
+
+fun TrafficSegmentFeatureDto.toDomain(): TrafficSegment =
+    TrafficSegment(
+        id = id,
+        geometry = geometry.toCoordinateList(),
+        currentSpeedKph = currentSpeedKph,
+        freeFlowSpeedKph = freeFlowSpeedKph,
+        speedRatio = speedRatio,
+        level = trafficLevelFrom(congestionLevel),
+        confidence = confidence,
+    )
+
+fun TrafficAreaResponseDto.toDomain(): TrafficAreaResult =
+    TrafficAreaResult(
+        enabled = enabled,
+        available = status == "LIVE",
+        source = source,
+        updatedAt = updatedAt,
+        segments = segments.map { it.toDomain() },
+    )

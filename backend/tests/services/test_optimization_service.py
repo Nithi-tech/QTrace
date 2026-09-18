@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from app.optimization.qpso import QPSOConfig, QPSOSolver
@@ -5,7 +7,10 @@ from app.repositories.optimization_job_repository import OptimizationJobReposito
 from app.routing.base import RoutingProvider
 from app.routing.exceptions import TooManyStopsError
 from app.schemas.routing import Coordinate, MatrixResult, RouteRequest, RouteResult
+from app.schemas.traffic import TrafficIncident
 from app.services.optimization_service import OptimizationService
+from app.traffic.matrix_service import TrafficMatrixService
+from app.traffic.traffic_service import ResolvedTraffic
 
 ORIGIN = Coordinate(latitude=12.97, longitude=77.59)
 DESTINATION = Coordinate(latitude=12.98, longitude=77.60)
@@ -106,7 +111,10 @@ async def test_multi_stop_request_calls_osrm_exactly_twice_and_picks_optimal_ord
     assert result.algorithm == "QPSO"
     assert result.stop_order == [1, 0]  # visit B (index 1) then A (index 0)
     assert spy.route_calls[0] == [ORIGIN, _STOP_B, _STOP_A, DESTINATION]
-    assert result.objective_value == 3
+    # objective_value is the blended (normalized) fitness QPSO actually searched, not
+    # raw seconds: distances are all 0 here (normalizes to 0), traffic is disabled by
+    # default (0), so this is exactly time_weight=0.4 * (3 / max_duration=100).
+    assert result.objective_value == pytest.approx(0.012)
 
 
 @pytest.mark.asyncio
@@ -156,3 +164,163 @@ async def test_qpso_path_is_city_independent(db_session, origin, stop_a, stop_b,
     assert sorted(result.stop_order) == [0, 1]
     assert len(spy.matrix_calls) == 1
     assert len(spy.route_calls) == 1
+
+
+# --- Traffic changes which order QPSO picks (CLAUDE.md traffic master-prompt: the
+# critical end-to-end proof). Only the network boundary is faked (TomTom's HTTP calls);
+# TrafficMatrixService's real corridor-matching/blending and QPSO's real update
+# equations run unmodified - see app/traffic/matrix_service.py and app/optimization/
+# fitness.py.
+_TRAFFIC_ORIGIN = Coordinate(latitude=12.90, longitude=77.50)
+_TRAFFIC_STOP_A = Coordinate(latitude=12.90, longitude=77.52)  # due east of origin, same latitude
+_TRAFFIC_STOP_B = Coordinate(latitude=12.95, longitude=77.58)  # off that line entirely
+_TRAFFIC_DESTINATION = Coordinate(latitude=12.90, longitude=77.60)
+
+# Without traffic, A-then-B is marginally cheaper by duration alone (9 < 10 for the
+# first leg). Full order for this matrix is [origin(0), A(1), B(2), destination(3)].
+_TRAFFIC_DURATION_MATRIX = [
+    [0, 9, 10, 15],
+    [9, 0, 5, 10],
+    [10, 5, 0, 10],
+    [15, 10, 10, 0],
+]
+
+
+class _FakeTrafficService:
+    """Stands in for TrafficService (the real TomTom/QTrace-crowd/historical fallback)
+    so this test controls resolved traffic per coordinate without a network call, while
+    TrafficMatrixService's real combination/corridor logic still runs on top of it."""
+
+    def __init__(self, congestion_by_coordinate: dict[tuple[float, float], float]) -> None:
+        self._congestion = congestion_by_coordinate
+
+    async def resolve(self, repository, coordinate) -> ResolvedTraffic:
+        return ResolvedTraffic(
+            available=True,
+            status="LIVE",
+            source="TOMTOM",
+            congestion_score=self._congestion[(coordinate.latitude, coordinate.longitude)],
+            confidence=1.0,
+            updated_at=datetime.now(timezone.utc),
+        )
+
+
+class _FakeTomTomIncidents:
+    def __init__(self, incidents: list[TrafficIncident]) -> None:
+        self._incidents = incidents
+
+    async def get_incidents(self, west, south, east, north) -> list[TrafficIncident]:
+        return self._incidents
+
+
+def _zero_congestion_traffic_matrix_service(incidents: list[TrafficIncident]) -> TrafficMatrixService:
+    congestion = {
+        (_TRAFFIC_ORIGIN.latitude, _TRAFFIC_ORIGIN.longitude): 0.0,
+        (_TRAFFIC_STOP_A.latitude, _TRAFFIC_STOP_A.longitude): 0.0,
+        (_TRAFFIC_STOP_B.latitude, _TRAFFIC_STOP_B.longitude): 0.0,
+        (_TRAFFIC_DESTINATION.latitude, _TRAFFIC_DESTINATION.longitude): 0.0,
+    }
+    return TrafficMatrixService(
+        traffic_service=_FakeTrafficService(congestion),
+        tomtom_provider=_FakeTomTomIncidents(incidents),
+        corridor_radius_meters=150.0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_traffic_incident_flips_qpso_stop_order(db_session):
+    spy_no_incident = SpyRoutingProvider(duration_matrix=_TRAFFIC_DURATION_MATRIX)
+    baseline_service = OptimizationService(
+        routing_provider=spy_no_incident,
+        job_repository=OptimizationJobRepository(db_session),
+        qpso_solver=QPSOSolver(QPSOConfig(seed=42)),
+        traffic_repository=object(),  # unused by _FakeTrafficService; DB never touched
+        traffic_matrix_service=_zero_congestion_traffic_matrix_service(incidents=[]),
+        traffic_enabled=True,
+    )
+
+    _, baseline_result = await baseline_service.plan_route(
+        RouteRequest(
+            origin=_TRAFFIC_ORIGIN,
+            destination=_TRAFFIC_DESTINATION,
+            stops=[_TRAFFIC_STOP_A, _TRAFFIC_STOP_B],
+        )
+    )
+
+    # With no incident, duration alone makes A-then-B (origin's 9 < 10) the cheaper order.
+    assert baseline_result.stop_order == [0, 1]
+
+    # A real road closure whose geometry sits only on the origin->A corridor (verified
+    # by construction: colinear with origin and A, at longitudes strictly between them;
+    # far from the diagonal origin->B, A->B, and B->destination corridors at this
+    # radius - see app/traffic/matcher.py for the corridor-intersection logic actually
+    # exercised here).
+    closure = TrafficIncident(
+        geometry={"type": "LineString", "coordinates": [[77.505, 12.90], [77.515, 12.90]]},
+        incident_type="Closed",
+        road_closed=True,
+    )
+    spy_with_incident = SpyRoutingProvider(duration_matrix=_TRAFFIC_DURATION_MATRIX)
+    traffic_aware_service = OptimizationService(
+        routing_provider=spy_with_incident,
+        job_repository=OptimizationJobRepository(db_session),
+        qpso_solver=QPSOSolver(QPSOConfig(seed=42)),
+        traffic_repository=object(),
+        traffic_matrix_service=_zero_congestion_traffic_matrix_service(incidents=[closure]),
+        traffic_enabled=True,
+    )
+
+    _, traffic_result = await traffic_aware_service.plan_route(
+        RouteRequest(
+            origin=_TRAFFIC_ORIGIN,
+            destination=_TRAFFIC_DESTINATION,
+            stops=[_TRAFFIC_STOP_A, _TRAFFIC_STOP_B],
+        )
+    )
+
+    # Same distances/durations, same seed - only the real, geometry-matched traffic
+    # incident changed. QPSO now picks B-then-A to avoid the closed origin->A corridor.
+    assert traffic_result.stop_order == [1, 0]
+    assert traffic_result.traffic.available is True
+    assert traffic_result.traffic.source == "TOMTOM"
+    # The winning order's own edges (0->2, 2->1, 1->3) never cross the closed corridor,
+    # so the route it actually reports on is LOW, not HEAVY (CLAUDE.md #72 - the label
+    # must match what the rider actually experiences, not the worst edge anywhere).
+    assert traffic_result.traffic.level == "LOW"
+
+
+@pytest.mark.asyncio
+async def test_traffic_level_reflects_heavy_congestion_on_the_chosen_route(db_session):
+    """classify_traffic_level (app/traffic/aggregation.py) is applied to this route's own
+    average traffic score, not left unwired (it existed but was never surfaced in an API
+    response before this test)."""
+    heavily_congested = {
+        (_TRAFFIC_ORIGIN.latitude, _TRAFFIC_ORIGIN.longitude): 0.9,
+        (_TRAFFIC_STOP_A.latitude, _TRAFFIC_STOP_A.longitude): 0.9,
+        (_TRAFFIC_STOP_B.latitude, _TRAFFIC_STOP_B.longitude): 0.9,
+        (_TRAFFIC_DESTINATION.latitude, _TRAFFIC_DESTINATION.longitude): 0.9,
+    }
+    matrix_service = TrafficMatrixService(
+        traffic_service=_FakeTrafficService(heavily_congested),
+        tomtom_provider=_FakeTomTomIncidents(incidents=[]),
+        corridor_radius_meters=150.0,
+    )
+    service = OptimizationService(
+        routing_provider=SpyRoutingProvider(duration_matrix=_TRAFFIC_DURATION_MATRIX),
+        job_repository=OptimizationJobRepository(db_session),
+        qpso_solver=QPSOSolver(QPSOConfig(seed=42)),
+        traffic_repository=object(),
+        traffic_matrix_service=matrix_service,
+        traffic_enabled=True,
+    )
+
+    _, result = await service.plan_route(
+        RouteRequest(
+            origin=_TRAFFIC_ORIGIN,
+            destination=_TRAFFIC_DESTINATION,
+            stops=[_TRAFFIC_STOP_A, _TRAFFIC_STOP_B],
+        )
+    )
+
+    assert result.traffic.available is True
+    assert result.traffic.level == "HEAVY"

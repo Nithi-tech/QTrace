@@ -47,7 +47,9 @@ def test_driver_ping_then_status_reflects_current_location(client):
     fleet_response = client.post("/api/v1/fleet/routes", json=_fleet_request())
     code = fleet_response.json()["vehicle_routes"][0]["tracking_code"]
 
-    ping = client.post(f"/api/v1/tracking/{code}/ping", json={"coordinate": {"latitude": 13.05, "longitude": 80.25}})
+    ping = client.post(
+        f"/api/v1/tracking/{code}/ping", json={"coordinate": {"latitude": 13.05, "longitude": 80.25}}
+    )
     assert ping.status_code == 204
 
     status = client.get(f"/api/v1/tracking/{code}/status")
