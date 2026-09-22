@@ -10,11 +10,13 @@ on the QPSO-optimized order, to get the final road geometry. OSRM is never calle
 from inside the QPSO fitness loop.
 
 Traffic (docs/TRAFFIC_ARCHITECTURE.md): TrafficMatrixService is queried once per
-request (a plain DB read - QTrace's own crowd telemetry, no external API call) to
-build a traffic matrix from real matched observations or a safe "unavailable"
-baseline. When 2+ intermediate stops are present, that matrix is blended with
-distance/duration (app/optimization/fitness.py) into the single cost matrix QPSO
-actually searches - so traffic genuinely changes which order QPSO picks.
+request to resolve every unique stop's traffic (TomTom live -> QTrace crowd ->
+historical -> unavailable) and build a traffic matrix. When 2+ intermediate stops are
+present, that matrix is blended with distance/duration (app/optimization/fitness.py)
+into the single cost matrix QPSO actually searches - so traffic genuinely changes
+which order QPSO picks, it is not just decoration on the response. QPSO itself
+(app/optimization/qpso.py) is unmodified - it always only ever saw a generic
+cost_matrix.
 """
 
 import time
@@ -45,6 +47,13 @@ def _unavailable_traffic_result(num_stops: int) -> TrafficMatrixResult:
     )
 
 
+def _unavailable_traffic_result(num_stops: int) -> TrafficMatrixResult:
+    return TrafficMatrixResult(
+        matrix=[[0.0] * num_stops for _ in range(num_stops)],
+        status=TrafficStatus(enabled=False, available=False, status="UNAVAILABLE", source=None),
+    )
+
+
 class OptimizationService:
     def __init__(
         self,
@@ -66,10 +75,10 @@ class OptimizationService:
         self._traffic_enabled = traffic_enabled
         self._fitness_weights = fitness_weights or FitnessWeights()
 
-    def _get_traffic_matrix(self, full_order_stops: list[Coordinate]) -> TrafficMatrixResult:
+    async def _get_traffic_matrix(self, full_order_stops: list[Coordinate]) -> TrafficMatrixResult:
         if self._traffic_repository is None or self._traffic_matrix_service is None:
             return _unavailable_traffic_result(len(full_order_stops))
-        return self._traffic_matrix_service.get_traffic_matrix(
+        return await self._traffic_matrix_service.get_traffic_matrix(
             self._traffic_repository, full_order_stops, enabled=self._traffic_enabled
         )
 
@@ -87,7 +96,7 @@ class OptimizationService:
 
         start = time.perf_counter()
 
-        traffic_result = self._get_traffic_matrix(full_order_stops)
+        traffic_result = await self._get_traffic_matrix(full_order_stops)
 
         if intermediate_count >= 2:
             matrix = await self._routing_provider.matrix(full_order_stops)
@@ -123,9 +132,13 @@ class OptimizationService:
             for k in range(len(final_indices) - 1)
         ]
         avg_traffic_score = sum(edge_scores) / len(edge_scores) if edge_scores else 0.0
-        traffic_level = classify_traffic_level(avg_traffic_score) if traffic_result.status.live else None
-        traffic_delay_seconds = (
-            route.duration_seconds * avg_traffic_score if traffic_result.status.live else None
+        traffic_available = traffic_result.status.available
+        traffic_impact_seconds = route.duration_seconds * avg_traffic_score if traffic_available else None
+        # Classified from this specific route's own edges (the same avg_traffic_score
+        # traffic_impact_seconds uses), not a whole-matrix average - so the label a rider
+        # sees always matches the delay actually added to their route (CLAUDE.md #72).
+        traffic_status = traffic_result.status.model_copy(
+            update={"level": classify_traffic_level(avg_traffic_score) if traffic_available else None}
         )
 
         runtime_ms = (time.perf_counter() - start) * 1000
@@ -139,9 +152,8 @@ class OptimizationService:
             objective_value=objective_value,
             optimization_runtime_ms=runtime_ms,
             explanation=explanation,
-            traffic=traffic_result.status,
-            traffic_level=traffic_level,
-            traffic_delay_seconds=traffic_delay_seconds,
+            traffic=traffic_status,
+            traffic_impact_seconds=traffic_impact_seconds,
         )
 
         job = self._job_repository.create_completed(

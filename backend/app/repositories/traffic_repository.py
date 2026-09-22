@@ -1,6 +1,8 @@
 """Traffic telemetry persistence (CLAUDE.md #6.2 - Service -> Repository -> Database).
 
-All timestamps are stored and compared as UTC (CLAUDE.md #40).
+All timestamps are stored and compared as UTC (CLAUDE.md #40). Only QTrace-crowd
+telemetry is persisted here - TomTom's live responses are fetched on demand and
+cached in-process (app/traffic/traffic_service.py), never written to this table.
 """
 
 from datetime import datetime, timedelta
@@ -37,7 +39,7 @@ class TrafficRepository:
             node_a=low, node_b=high, geometry=geometry, profile_speed_mps=profile_speed_mps, created_at=now
         )
         self._db.add(segment)
-        self._db.flush()  # assigns segment.id without committing the whole ingestion batch yet
+        self._db.flush()
         return segment
 
     def add_observation(
@@ -72,6 +74,14 @@ class TrafficRepository:
     def get_segment(self, segment_id: str) -> TrafficSegment | None:
         return self._db.get(TrafficSegment, segment_id)
 
+    def find_segment_by_nodes(self, node_a: int, node_b: int) -> TrafficSegment | None:
+        low, high = min(node_a, node_b), max(node_a, node_b)
+        return (
+            self._db.query(TrafficSegment)
+            .filter(TrafficSegment.node_a == low, TrafficSegment.node_b == high)
+            .one_or_none()
+        )
+
     def get_snapshot(self, segment_id: str) -> TrafficSnapshot | None:
         return self._db.query(TrafficSnapshot).filter(TrafficSnapshot.segment_id == segment_id).one_or_none()
 
@@ -80,6 +90,7 @@ class TrafficRepository:
         segment_id: str,
         current_speed_mps: float,
         reference_speed_mps: float,
+        reference_speed_source: str,
         congestion_score: float,
         observation_count: int,
         confidence: float,
@@ -89,7 +100,7 @@ class TrafficRepository:
         snapshot = self.get_snapshot(segment_id)
         if snapshot is None:
             snapshot = TrafficSnapshot(
-                provider="qtrace_telemetry",
+                provider="QTRACE_CROWD",
                 road_or_route_info={"segment_id": segment_id},
                 segment_id=segment_id,
                 captured_at=captured_at,
@@ -99,35 +110,12 @@ class TrafficRepository:
         snapshot.captured_at = captured_at
         snapshot.current_speed_mps = current_speed_mps
         snapshot.reference_speed_mps = reference_speed_mps
+        snapshot.reference_speed_source = reference_speed_source
         snapshot.congestion_score = congestion_score
         snapshot.observation_count = observation_count
         snapshot.confidence = confidence
         snapshot.status = status
         return snapshot
-
-    def get_snapshots_in_bbox(
-        self, west: float, south: float, east: float, north: float
-    ) -> list[tuple[TrafficSnapshot, TrafficSegment]]:
-        """Bounding-box filter over each segment's geometry.
-
-        Geometry is stored as JSON (not a PostGIS geometry column in this pass - see
-        docs/TRAFFIC_ARCHITECTURE.md), so filtering happens in Python rather than via a
-        spatial SQL predicate. Fine at the data volumes this feature currently operates
-        at; a real spatial index is a documented future upgrade.
-        """
-        results = (
-            self._db.query(TrafficSnapshot, TrafficSegment)
-            .join(TrafficSegment, TrafficSnapshot.segment_id == TrafficSegment.id)
-            .all()
-        )
-        matched = []
-        for snapshot, segment in results:
-            if not segment.geometry:
-                continue
-            coords = segment.geometry.get("coordinates", [])
-            if any(west <= lon <= east and south <= lat <= north for lon, lat in coords):
-                matched.append((snapshot, segment))
-        return matched
 
     def get_historical_profile(
         self, segment_id: str, day_of_week: int, time_bucket_minutes: int
@@ -150,9 +138,8 @@ class TrafficRepository:
         new_speed_sample: float,
         now: datetime,
     ) -> TrafficHistoricalProfile:
-        """Running-mean update (CLAUDE.md traffic-free-system master-prompt #14) -
-        see app/models/traffic_historical_profile.py docstring for why this is a mean,
-        not a true rolling median."""
+        """Running-mean update - see app/models/traffic_historical_profile.py docstring
+        for why this is a mean, not a true rolling median."""
         profile = self.get_historical_profile(segment_id, day_of_week, time_bucket_minutes)
         if profile is None:
             profile = TrafficHistoricalProfile(
@@ -175,8 +162,8 @@ class TrafficRepository:
 
     def purge_expired(self, raw_cutoff: datetime, snapshot_cutoff: datetime) -> tuple[int, int]:
         """Deletes raw observations older than raw_cutoff and orphaned/expired
-        snapshots older than snapshot_cutoff (CLAUDE.md traffic-free-system
-        master-prompt #27 - short raw retention, longer aggregate retention)."""
+        snapshots older than snapshot_cutoff (short raw retention, longer aggregate
+        retention)."""
         observations_deleted = (
             self._db.query(TrafficObservation).filter(TrafficObservation.created_at < raw_cutoff).delete()
         )

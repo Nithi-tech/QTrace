@@ -1,4 +1,4 @@
-"""Blended cost matrix for QPSO (CLAUDE.md #9).
+"""Blended cost matrix for QPSO (CLAUDE.md #9, traffic master-prompt #27/#28).
 
 QPSOSolver (app/optimization/qpso.py) takes a single generic cost_matrix and has no
 knowledge of distance, time, or traffic - so traffic-awareness requires zero changes
@@ -7,7 +7,7 @@ to QPSO itself. This module builds that one matrix.
 Distance and duration are on incomparable scales (meters vs seconds), so both are
 min-max normalized to [0, 1] before combining; the traffic matrix from
 app/traffic/matrix_service.py is already in [0, 1] (and already confidence-weighted -
-see that module) and is used as-is.
+see that module) and is used as-is - not double-counted with anything else.
 """
 
 from dataclasses import dataclass

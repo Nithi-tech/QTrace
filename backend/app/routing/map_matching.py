@@ -2,10 +2,9 @@
 
 Deliberately separate from RoutingProvider (app/routing/base.py) rather than adding
 methods to that ABC: RoutingProvider is already implemented by test stubs across the
-existing test suite (tests/services, tests/api) that only provide geocode()/route()/
-matrix() - adding new @abstractmethods there would break every one of them for a
-capability only the traffic-telemetry ingestion path needs. OSRMProvider implements
-both interfaces (see app/routing/osrm_provider.py).
+existing test suite that only provide geocode()/route()/matrix() - adding new
+@abstractmethods there would break every one of them for a capability only the traffic
+system needs. OSRMProvider implements both interfaces (see app/routing/osrm_provider.py).
 """
 
 from abc import ABC, abstractmethod

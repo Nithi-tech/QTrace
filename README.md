@@ -30,7 +30,7 @@ and operational intelligence.
 ```
 Android App --HTTPS/JSON--> FastAPI Backend --> Optimization Service (QPSO, OR-Tools baseline)
                                              --> Routing Service --> RoutingProvider (OSRM / TomTom)
-                                             --> Traffic Service
+                                             --> Traffic Service (TomTom live -> QTrace crowd -> historical -> unavailable)
                                              --> PostgreSQL/PostGIS
                                              --> Redis + RQ workers (long-running optimization jobs)
 ```
@@ -39,8 +39,9 @@ Road-network routing (shortest paths, distance/time matrices) is delegated to
 external providers (OSRM for development, TomTom for production) behind a
 `RoutingProvider` abstraction — QTrace does not maintain its own city-graph
 routing engine. QPSO and the OR-Tools baseline optimize **stop ordering and
-vehicle assignment** (TSP/VRP/CVRP/CVRPTW) on top of the distance/time matrix
-a provider returns.
+vehicle assignment** (TSP/VRP/CVRP/CVRPTW) on top of a cost matrix blended from
+that routing data and real-time traffic (see
+[docs/TRAFFIC_ARCHITECTURE.md](docs/TRAFFIC_ARCHITECTURE.md)).
 
 Full details: [docs/architecture.md](docs/architecture.md)
 
@@ -122,7 +123,11 @@ python -m pytest
 `POST /api/v1/routes` (road route, optionally through `stops`), `POST
 /api/v1/optimization/jobs` / `GET /api/v1/optimization/jobs/{id}` (route +
 QPSO stop-order optimization for 2+ stops), `GET
-/api/v1/geocoding/search?query=...` (place search). Routing defaults to the
+/api/v1/geocoding/search?query=...` (place search). Multi-vehicle fleet
+routing: `POST /api/v1/fleet/routes` (depot + fleet + destinations in, one
+optimized route per vehicle out — see
+[docs/qisa-roadmap.md](docs/qisa-roadmap.md) for the current per-vehicle
+algorithm and the planned future optimizer). Routing defaults to the
 public OSRM demo server (no setup required); geocoding defaults to TomTom
 (requires `TOMTOM_API_KEY`) or set `GEOCODING_PROVIDER=nominatim` for a
 keyless alternative — see [docs/OSRM_INTEGRATION.md](docs/OSRM_INTEGRATION.md).
@@ -140,7 +145,8 @@ See [android/README.md](android/README.md) for required `local.properties` value
 
 - [System Architecture](docs/architecture.md)
 - [OSRM Routing Integration](docs/OSRM_INTEGRATION.md)
-- [QTrace Crowd-Traffic Architecture](docs/TRAFFIC_ARCHITECTURE.md)
+- [Real-Time Traffic Intelligence](docs/TRAFFIC_ARCHITECTURE.md)
+- [QISA Roadmap (future multi-vehicle optimizer)](docs/qisa-roadmap.md)
 - [Mathematical Formulation](docs/math-formulation.md)
 - [Original Problem Statement (hackathon source)](docs/problem-statement.md)
 - [Demonstration Plan](docs/demonstration.md)

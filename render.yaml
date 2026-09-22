@@ -1,0 +1,41 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec) - deploys the QTrace backend as a
+# Docker web service plus a free managed Postgres database, wired together automatically.
+#
+# To use: push this file to the repo's default branch, then in the Render dashboard choose
+# New -> Blueprint and point it at this repo. Render reads this file and creates both resources
+# in one step - no manual "New Web Service" clicking through required.
+databases:
+  - name: qtrace-db
+    plan: free
+    databaseName: qtrace
+    user: qtrace
+
+services:
+  - type: web
+    name: qtrace-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qtrace-db
+          property: connectionString
+      - key: OSRM_BASE_URL
+        value: https://router.project-osrm.org
+      - key: GEOCODING_PROVIDER
+        value: nominatim
+      - key: NOMINATIM_BASE_URL
+        value: https://nominatim.openstreetmap.org
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ROUTING_REQUEST_TIMEOUT_SECONDS
+        value: "15.0"
+      - key: ROUTING_MAX_RETRIES
+        value: "2"
+      # Traffic feature degrades to its historical/unavailable fallback without this -
+      # add a real key later (Render dashboard -> Environment) if TomTom live traffic is wanted.
+      - key: TOMTOM_API_KEY
+        sync: false

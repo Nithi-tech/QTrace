@@ -1,7 +1,7 @@
-"""Day-of-week / time-bucket helpers for the historical baseline (CLAUDE.md
-traffic-free-system master-prompt #14). Pure, timezone-explicit (CLAUDE.md #40 -
-callers must pass timezone-aware UTC datetimes; bucketing is done in UTC, not local
-time, to keep behavior identical across regions/cities).
+"""Day-of-week / time-bucket helpers for the historical baseline (CLAUDE.md traffic
+master-prompt #22). Pure, timezone-explicit - callers must pass timezone-aware UTC
+datetimes; bucketing is done in UTC, not local time, to keep behavior identical across
+regions/cities.
 """
 
 from datetime import datetime
@@ -10,8 +10,7 @@ DEFAULT_BUCKET_SIZE_MINUTES = 15
 
 
 def day_of_week(at: datetime) -> int:
-    """0=Monday .. 6=Sunday (Python's own convention, used as-is rather than inventing
-    a different numbering)."""
+    """0=Monday .. 6=Sunday (Python's own convention, used as-is)."""
     return at.weekday()
 
 

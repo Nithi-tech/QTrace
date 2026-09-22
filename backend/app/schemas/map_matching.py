@@ -27,7 +27,7 @@ class MatchedEdge(BaseModel):
     @property
     def segment_key(self) -> str:
         """Order-independent key so both travel directions share one segment
-        (CLAUDE.md traffic-free-system master-prompt #21 - documented simplification)."""
+        (a documented simplification - see docs/TRAFFIC_ARCHITECTURE.md)."""
         return f"{min(self.node_a, self.node_b)}:{max(self.node_a, self.node_b)}"
 
 
@@ -35,10 +35,10 @@ class MatchedLeg(BaseModel):
     """The road distance/edges between two consecutive uploaded GPS points.
 
     observed_speed_mps here is derived from OSRM's matched distance / the phone's own
-    elapsed time - a cross-check value. app/traffic/service.py uses the two bounding
-    observations' own reported speed_mps as the primary signal instead (a phone's GPS
-    speed reading is generally more accurate than back-computing from two position
-    fixes), correlated via start_timestamp/end_timestamp.
+    elapsed time - a cross-check value. app/traffic/telemetry_service.py uses the two
+    bounding observations' own reported speed_mps as the primary signal instead (a
+    phone's GPS speed reading is generally more accurate than back-computing from two
+    position fixes), correlated via start_timestamp/end_timestamp.
     """
 
     edges: list[MatchedEdge]

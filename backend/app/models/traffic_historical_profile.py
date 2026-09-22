@@ -1,11 +1,13 @@
 """Learned historical baseline: this segment's typical speed at this day-of-week and
-time-of-day, aggregated from QTrace's own past observations (CLAUDE.md traffic-free-
-system master-prompt #14). Long retention - this is the whole point of collecting it.
+time-of-day, aggregated from QTrace's own past crowd-telemetry observations (CLAUDE.md
+traffic master-prompt #22). Long retention - this is the whole point of collecting it.
+Built only from QTrace's own observations, never from TomTom - historical here means
+"what QTrace itself has learned," distinct from any provider's live data.
 
-median_speed_mps here is a running-mean approximation, not a true rolling median (an
-exact rolling median would require keeping every raw sample indefinitely, which
+median_speed_mps is a running-mean approximation, not a true rolling median (an exact
+rolling median would require keeping every raw sample indefinitely, which
 TRAFFIC_RAW_RETENTION_DAYS explicitly prevents) - documented in
-app/traffic/service.py::_update_historical_profile.
+app/traffic/telemetry_service.py.
 """
 
 from datetime import datetime

@@ -1,6 +1,7 @@
 package com.qtrace.app.ui.screens.routeplanning
 
 import com.qtrace.app.domain.model.LocationSuggestion
+import com.qtrace.app.domain.model.MapBounds
 
 sealed class RoutePlanningEvent {
     data class StartQueryChanged(val query: String) : RoutePlanningEvent()
@@ -15,4 +16,6 @@ sealed class RoutePlanningEvent {
     data object OptimizeRouteClicked : RoutePlanningEvent()
     data object RetryClicked : RoutePlanningEvent()
     data object ErrorDismissed : RoutePlanningEvent()
+    data object TrafficToggled : RoutePlanningEvent()
+    data class MapBoundsChanged(val bounds: MapBounds) : RoutePlanningEvent()
 }

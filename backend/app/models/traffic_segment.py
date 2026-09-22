@@ -1,9 +1,7 @@
-"""A road segment QTrace has observed traffic on, identified by the pair of OSM node
-IDs it runs between (CLAUDE.md #7 domain model - road-network segment).
-
-Node IDs come from OSRM's map-matching/nearest responses (app/routing/map_matching.py),
-never invented - this is how QTrace stays city-independent without running its own
-road graph (CLAUDE.md traffic-free-system master-prompt #35/#36).
+"""A road segment QTrace has crowd-telemetry data on, identified by the pair of OSM
+node IDs it runs between (CLAUDE.md #7 domain model). Node IDs come from OSRM's
+map-matching/nearest responses (app/routing/map_matching.py), never invented - this is
+how QTrace stays city-independent without running its own road graph.
 """
 
 from datetime import datetime
@@ -20,13 +18,11 @@ class TrafficSegment(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
     # Always stored with node_a <= node_b so both travel directions map to one segment
-    # (CLAUDE.md traffic-free-system master-prompt #21 - a documented simplification).
+    # (a documented simplification - see docs/TRAFFIC_ARCHITECTURE.md).
     node_a: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     node_b: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     geometry: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # GeoJSON LineString
-    # OSRM's routing-profile speed for this edge (annotations=true "speed" field) -
-    # NOT a verified OSM maxspeed tag (the public OSRM demo server does not expose
-    # maxspeed annotations - see docs/TRAFFIC_ARCHITECTURE.md). This is tier 1 of the
-    # reference-speed hierarchy in app/traffic/reference_speed.py.
+    # OSRM's routing-profile speed for this edge - a fallback reference speed when
+    # neither TomTom nor a historical baseline is available for this exact segment.
     profile_speed_mps: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

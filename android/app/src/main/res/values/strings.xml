@@ -13,9 +13,32 @@
     <string name="result_duration_label">Estimated time</string>
     <string name="result_algorithm_label">Algorithm</string>
     <string name="result_status_label">Status</string>
+    <string name="result_traffic_label">Traffic</string>
 
     <string name="status_direct_route">Route calculated successfully</string>
     <string name="status_optimized">Optimized successfully</string>
+
+    <string name="traffic_level_low">Low</string>
+    <string name="traffic_level_medium">Medium</string>
+    <string name="traffic_level_high">High</string>
+    <string name="traffic_level_unknown">Present</string>
+    <string name="traffic_status_unavailable">Unavailable</string>
+    <string name="traffic_free_flow_format">Free-flow time: %1$s (traffic added the rest)</string>
+
+    <string name="traffic_toggle_label">Traffic</string>
+    <string name="traffic_legend_title">Traffic</string>
+    <string name="traffic_level_free_flow">Free flow</string>
+    <string name="traffic_level_moderate">Moderate</string>
+    <string name="traffic_level_heavy">Heavy</string>
+    <string name="traffic_level_very_heavy">Very heavy</string>
+    <string name="traffic_level_severe">Severe</string>
+    <string name="traffic_layer_loading">Updating traffic…</string>
+    <string name="traffic_layer_live_format">Live traffic · %1$s · updated %2$s ago</string>
+    <string name="traffic_layer_live_just_now_format">Live traffic · %1$s · updated just now</string>
+    <string name="traffic_layer_unavailable">Traffic unavailable</string>
+    <string name="traffic_source_tomtom">TomTom</string>
+    <string name="traffic_updated_seconds_ago">%1$ds</string>
+    <string name="traffic_updated_minutes_ago">%1$dm</string>
 
     <string name="loading_searching_location">Finding location…</string>
     <string name="loading_calculating_route">Calculating road route…</string>
@@ -29,6 +52,7 @@
     <string name="error_network_unavailable">Network connection unavailable.</string>
     <string name="error_same_location">Start and destination cannot be the same location.</string>
     <string name="error_invalid_location">That location could not be used. Please choose another.</string>
+    <string name="error_tracking_code_not_found">That tracking code wasn\'t found. Double-check it and try again.</string>
 
     <string name="offline_banner">You\'re offline. Route planning needs a connection.</string>
     <string name="retry_action">Retry</string>
@@ -38,4 +62,10 @@
     <string name="content_description_start_marker">Start location marker</string>
     <string name="content_description_destination_marker">Destination marker</string>
     <string name="content_description_clear_field">Clear</string>
+
+    <string name="fleet_planning_action">Plan Fleet</string>
+    <string name="content_description_fleet_map">Map showing depot, destinations, and vehicle routes</string>
+
+    <string name="driver_tracking_action">Driver</string>
+    <string name="content_description_driver_map">Map showing your assigned route and current location</string>
 </resources>

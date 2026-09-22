@@ -25,15 +25,10 @@ class OptimizationRouteResult(BaseModel):
     optimization_runtime_ms: float | None = None
     explanation: str
     traffic: TrafficStatus
-    traffic_level: str | None = Field(
+    traffic_impact_seconds: float | None = Field(
         default=None,
-        description="LOW/MODERATE/HIGH/SEVERE; None when traffic is unavailable (CLAUDE.md #49 - never "
-        "reported as LOW when there is simply no data).",
-    )
-    traffic_delay_seconds: float | None = Field(
-        default=None,
-        description="Estimated extra travel time from matched QTrace telemetry. Only populated when "
-        "traffic.live is true - never fabricated for baseline/unavailable data (CLAUDE.md #68).",
+        description="Estimated extra travel time from matched live/historical traffic. Only populated "
+        "when traffic.available is true - never fabricated for unavailable data (CLAUDE.md #68).",
     )
 
 

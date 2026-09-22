@@ -13,5 +13,6 @@ sealed class QTraceError {
     data object RequestTimedOut : QTraceError()
     data object SameLocation : QTraceError()
     data object InvalidLocation : QTraceError()
+    data object TrackingCodeNotFound : QTraceError()
     data class Unknown(val message: String?) : QTraceError()
 }

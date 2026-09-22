@@ -1,17 +1,13 @@
-"""Spatial matching between a stop-pair's corridor and QTrace's own stored segments
-(CLAUDE.md #6.3). Adapted from the same corridor-matching approach used for any
-external traffic source (see docs/TRAFFIC_ARCHITECTURE.md "Traffic matrix"), just
-against our own database instead of a third-party API - the geometric problem is
-identical: OSRM stop-to-stop pairs don't line up with segment IDs 1:1, so matching is
-done by real geometric intersection, not by name or ID guesswork.
+"""Geometric helpers for matching TomTom incidents to a stop-pair's corridor
+(CLAUDE.md #6.3). Flow is resolved point-by-point (app/traffic/traffic_service.py) and
+needs no geometry matching; incidents are the one piece that's genuinely area-based
+(TomTom's Incidents API takes a bbox), so this is the one place Shapely is used.
 """
 
 import math
 
 from shapely.geometry import LineString, shape
 
-from app.models.traffic_segment import TrafficSegment
-from app.models.traffic_snapshot import TrafficSnapshot
 from app.schemas.routing import Coordinate
 
 _METERS_PER_DEGREE_LAT = 111_320.0
@@ -43,25 +39,21 @@ def _corridor_polygon(origin: Coordinate, destination: Coordinate, radius_meters
     return line.buffer(_meters_to_degrees_lon(radius_meters, mean_lat))
 
 
-def match_pair_to_snapshots(
-    origin: Coordinate,
-    destination: Coordinate,
-    candidates: list[tuple[TrafficSnapshot, TrafficSegment]],
-    radius_meters: float,
-) -> list[tuple[TrafficSnapshot, TrafficSegment]]:
-    """Segments (with their current snapshot) whose geometry intersects the
-    straight-line corridor between two stops. Same documented straight-line-corridor
-    simplification as the OSRM-route-per-pair problem this avoids (CLAUDE.md #20 -
-    never call an external/heavy provider per matrix cell to build a matrix)."""
+def incidents_on_corridor(
+    origin: Coordinate, destination: Coordinate, incidents: list, radius_meters: float
+) -> list:
+    """Incidents (app.schemas.traffic.TrafficIncident) whose geometry intersects the
+    straight-line corridor between two stops - a documented simplification (the real
+    route may not be a straight line), same tradeoff as avoiding an OSRM call per pair."""
     corridor = _corridor_polygon(origin, destination, radius_meters)
     matched = []
-    for snapshot, segment in candidates:
-        if not segment.geometry:
+    for incident in incidents:
+        if not incident.geometry:
             continue
         try:
-            geom = shape(segment.geometry)
+            geom = shape(incident.geometry)
         except (ValueError, AttributeError):
             continue
         if geom.intersects(corridor):
-            matched.append((snapshot, segment))
+            matched.append(incident)
     return matched

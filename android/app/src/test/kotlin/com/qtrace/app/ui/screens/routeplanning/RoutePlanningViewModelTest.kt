@@ -3,13 +3,17 @@ package com.qtrace.app.ui.screens.routeplanning
 import com.qtrace.app.data.network.ConnectivityObserver
 import com.qtrace.app.domain.model.Coordinate
 import com.qtrace.app.domain.model.LocationSuggestion
+import com.qtrace.app.domain.model.MapBounds
 import com.qtrace.app.domain.model.OptimizationResult
 import com.qtrace.app.domain.model.OptimizationStatus
 import com.qtrace.app.domain.model.QTraceError
 import com.qtrace.app.domain.model.QTraceResult
 import com.qtrace.app.domain.model.RouteInfo
+import com.qtrace.app.domain.model.TrafficAreaResult
+import com.qtrace.app.domain.model.TrafficInfo
 import com.qtrace.app.domain.repository.GeocodingRepository
 import com.qtrace.app.domain.repository.RouteRepository
+import com.qtrace.app.domain.repository.TrafficRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -46,8 +50,9 @@ class RoutePlanningViewModelTest {
     private fun viewModel(
         geocoding: GeocodingRepository = FakeGeocodingRepository(emptyMap()),
         route: RouteRepository = FakeRouteRepository(QTraceResult.Success(sampleOptimizationResult())),
+        traffic: TrafficRepository = FakeTrafficRepository(),
         online: Boolean = true,
-    ) = RoutePlanningViewModel(geocoding, route, FakeConnectivityObserver(online))
+    ) = RoutePlanningViewModel(geocoding, route, traffic, FakeConnectivityObserver(online))
 
     @Test
     fun `typing a query returns suggestions after debounce`() = runTest(testDispatcher) {
@@ -151,6 +156,102 @@ class RoutePlanningViewModelTest {
         assertEquals("", vm.state.value.startQuery)
     }
 
+    @Test
+    fun `traffic toggle off does not fetch even with bounds available`() = runTest(testDispatcher) {
+        val traffic = FakeTrafficRepository()
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.9, 77.5, 13.0, 77.6)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(0, traffic.callCount)
+        assertEquals(TrafficLayerStatus.OFF, vm.state.value.trafficLayerStatus)
+    }
+
+    @Test
+    fun `enabling traffic with bounds already known fetches the area`() = runTest(testDispatcher) {
+        val segments = TrafficAreaResult(
+            enabled = true,
+            available = true,
+            source = "TOMTOM",
+            updatedAt = "2026-01-01T00:00:00Z",
+            segments = emptyList(),
+        )
+        val traffic = FakeTrafficRepository(QTraceResult.Success(segments))
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.9, 77.5, 13.0, 77.6)))
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(1, traffic.callCount)
+        assertEquals(TrafficLayerStatus.LIVE, vm.state.value.trafficLayerStatus)
+        assertEquals("TOMTOM", vm.state.value.trafficSource)
+    }
+
+    @Test
+    fun `unavailable traffic result is reported as unavailable not live`() = runTest(testDispatcher) {
+        val unavailable = TrafficAreaResult(enabled = true, available = false, source = null, updatedAt = null, segments = emptyList())
+        val traffic = FakeTrafficRepository(QTraceResult.Success(unavailable))
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.9, 77.5, 13.0, 77.6)))
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(TrafficLayerStatus.UNAVAILABLE, vm.state.value.trafficLayerStatus)
+    }
+
+    @Test
+    fun `traffic request failure does not raise the screen-wide error banner`() = runTest(testDispatcher) {
+        val traffic = FakeTrafficRepository(QTraceResult.Failure(QTraceError.NetworkUnavailable))
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.9, 77.5, 13.0, 77.6)))
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(TrafficLayerStatus.UNAVAILABLE, vm.state.value.trafficLayerStatus)
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun `toggling traffic off clears segments and stops future fetches`() = runTest(testDispatcher) {
+        val traffic = FakeTrafficRepository()
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.9, 77.5, 13.0, 77.6)))
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+        val callsAfterDisable = traffic.callCount
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(20.0, 77.5, 21.0, 78.6)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(TrafficLayerStatus.OFF, vm.state.value.trafficLayerStatus)
+        assertTrue(vm.state.value.trafficSegments.isEmpty())
+        assertEquals(callsAfterDisable, traffic.callCount)
+    }
+
+    @Test
+    fun `a small camera pan does not trigger a redundant traffic fetch`() = runTest(testDispatcher) {
+        val traffic = FakeTrafficRepository()
+        val vm = viewModel(traffic = traffic)
+
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.90, 77.50, 13.00, 77.60)))
+        vm.onEvent(RoutePlanningEvent.TrafficToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+        val firstCallCount = traffic.callCount
+
+        // Shifted by ~1% of the viewport span - not significant.
+        vm.onEvent(RoutePlanningEvent.MapBoundsChanged(MapBounds(12.901, 77.501, 13.001, 77.601)))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(firstCallCount, traffic.callCount)
+    }
+
     private fun sampleOptimizationResult() = OptimizationResult(
         route = RouteInfo(distanceMeters = 1500.0, durationSeconds = 240.0, geometry = emptyList()),
         algorithm = "DIRECT_ROUTE",
@@ -159,6 +260,15 @@ class RoutePlanningViewModelTest {
         objectiveValue = null,
         optimizationRuntimeMs = 5.0,
         explanation = "Single origin-to-destination request",
+        traffic = TrafficInfo(
+            enabled = true,
+            available = false,
+            status = "UNAVAILABLE",
+            source = null,
+            confidence = null,
+            level = null,
+        ),
+        trafficImpactSeconds = null,
     )
 }
 
@@ -183,4 +293,21 @@ private class FakeRouteRepository(
 
 private class FakeConnectivityObserver(private val online: Boolean) : ConnectivityObserver {
     override fun isOnline(): Flow<Boolean> = flowOf(online)
+}
+
+private class FakeTrafficRepository(
+    private val result: QTraceResult<TrafficAreaResult> = QTraceResult.Success(
+        TrafficAreaResult(enabled = true, available = false, source = null, updatedAt = null, segments = emptyList()),
+    ),
+) : TrafficRepository {
+    var callCount = 0
+        private set
+    var lastBounds: MapBounds? = null
+        private set
+
+    override suspend fun getTrafficArea(bounds: MapBounds): QTraceResult<TrafficAreaResult> {
+        callCount++
+        lastBounds = bounds
+        return result
+    }
 }

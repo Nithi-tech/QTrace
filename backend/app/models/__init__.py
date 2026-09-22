@@ -3,6 +3,7 @@ from app.models.delivery_stop import DeliveryStop
 from app.models.depot import Depot
 from app.models.optimization_job import OptimizationJob, OptimizationJobStatus
 from app.models.route import Route, RouteStop
+from app.models.tracking import LocationPing, TrackingSession
 from app.models.traffic_historical_profile import TrafficHistoricalProfile
 from app.models.traffic_observation import TrafficObservation
 from app.models.traffic_segment import TrafficSegment
@@ -14,10 +15,12 @@ __all__ = [
     "Base",
     "DeliveryStop",
     "Depot",
+    "LocationPing",
     "OptimizationJob",
     "OptimizationJobStatus",
     "Route",
     "RouteStop",
+    "TrackingSession",
     "TrafficHistoricalProfile",
     "TrafficObservation",
     "TrafficSegment",

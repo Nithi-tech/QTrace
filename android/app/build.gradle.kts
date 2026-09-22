@@ -33,7 +33,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "API_BASE_URL", "\"${localOrDefault("qtrace.apiBaseUrl", "http://10.0.2.2:8000/")}\"")
-        buildConfigField("String", "MAP_STYLE_URL", "\"${localOrDefault("qtrace.mapStyleUrl", "https://tiles.openfreemap.org/styles/liberty")}\"")
+        // "positron" (a plain, muted basemap) rather than "liberty" (a busy, full-color style) -
+        // colored routes/markers need to be the visually dominant thing on this map, not compete
+        // with a detailed basemap for attention.
+        buildConfigField("String", "MAP_STYLE_URL", "\"${localOrDefault("qtrace.mapStyleUrl", "https://tiles.openfreemap.org/styles/positron")}\"")
     }
 
     buildTypes {
