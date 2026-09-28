@@ -1,4 +1,4 @@
-# Render Blueprint (https://render.com/docs/blueprint-spec) - deploys the QTrace backend as a
+        # Render Blueprint (https://render.com/docs/blueprint-spec) - deploys the QTrace backend as a
 # Docker web service plus a free managed Postgres database, wired together automatically.
 #
 # To use: push this file to the repo's default branch, then in the Render dashboard choose
@@ -11,6 +11,12 @@ databases:
     user: qtrace
 
 services:
+  - type: web
+    name: qtrace-landing
+    runtime: static
+    staticPublishPath: ./frontend-landing
+    buildCommand: "true"
+
   - type: web
     name: qtrace-backend
     runtime: docker

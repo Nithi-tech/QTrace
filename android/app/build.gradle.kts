@@ -32,7 +32,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"${localOrDefault("qtrace.apiBaseUrl", "http://10.0.2.2:8000/")}\"")
+        // Default points at the hosted backend (see render.yaml) so a build with no
+        // local.properties override - e.g. an APK handed to someone else - works out of the
+        // box; override qtrace.apiBaseUrl locally for emulator/local-backend development.
+        buildConfigField("String", "API_BASE_URL", "\"${localOrDefault("qtrace.apiBaseUrl", "https://qtrace-backend-pmjb.onrender.com/")}\"")
         // "positron" (a plain, muted basemap) rather than "liberty" (a busy, full-color style) -
         // colored routes/markers need to be the visually dominant thing on this map, not compete
         // with a detailed basemap for attention.
