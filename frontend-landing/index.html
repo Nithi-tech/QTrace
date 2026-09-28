@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QTrace</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #22c55e;
+    --accent2: #3b82f6;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 560px;
+    width: 100%;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 40px 32px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 32px;
+  }
+  .tagline {
+    color: var(--muted);
+    margin: 0 0 28px;
+    font-size: 15px;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(34,197,94,0.12);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 24px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  a.btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-decoration: none;
+    padding: 16px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    color: white;
+    transition: transform 0.15s ease;
+  }
+  a.btn:hover { transform: translateY(-1px); }
+  a.btn.primary { background: var(--accent2); }
+  a.btn.secondary { background: #334155; }
+  a.btn small {
+    display: block;
+    font-weight: 400;
+    color: rgba(255,255,255,0.75);
+    font-size: 12.5px;
+    margin-top: 2px;
+  }
+  .note {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .note b { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="status"><span class="dot"></span> Backend live</div>
+    <h1>QTrace</h1>
+    <p class="tagline">Multi-vehicle fleet route optimization with live driver tracking.</p>
+
+    <div class="links">
+      <a class="btn primary" href="https://qtrace-backend-pmjb.onrender.com/docs" target="_blank" rel="noopener">
+        <span>Open the live API<br><small>Interactive Swagger docs — try real endpoints</small></span>
+        <span>&rarr;</span>
+      </a>
+      <a class="btn secondary" href="./qtrace-app.apk" download>
+        <span>Download the Android app<br><small>QTrace.apk — install on any Android phone</small></span>
+        <span>&darr;</span>
+      </a>
+    </div>
+
+    <p class="note">
+      <b>Installing the APK:</b> your phone will ask you to allow "install unknown apps"
+      for whichever app opened the file (Chrome, Files, etc.) — that's expected since this
+      isn't distributed via Google Play.<br><br>
+      <b>First load note:</b> the backend runs on a free-tier server that sleeps after
+      15 minutes of inactivity. The first request after a quiet period can take 30–50s
+      to wake up — this is normal.
+    </p>
+  </div>
+</body>
+</html>
