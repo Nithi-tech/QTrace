@@ -33,6 +33,14 @@
     padding: 40px 32px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35);
   }
+  .demo-frame {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border: none;
+    border-radius: 12px;
+    background: #000;
+    margin-bottom: 20px;
+  }
   h1 {
     margin: 0 0 4px;
     font-size: 32px;
@@ -101,8 +109,19 @@
     <h1>QTrace</h1>
     <p class="tagline">Multi-vehicle fleet route optimization with live driver tracking.</p>
 
+    <iframe
+      class="demo-frame"
+      src="https://appetize.io/app/android/com.qtrace.app?device=pixel7&osVersion=13.0&toolbar=true"
+      title="QTrace live app demo"
+      allow="clipboard-read; clipboard-write"
+    ></iframe>
+
     <div class="links">
-      <a class="btn primary" href="https://qtrace-backend-pmjb.onrender.com/docs" target="_blank" rel="noopener">
+      <a class="btn primary" href="https://appetize.io/app/android/com.qtrace.app?device=pixel7&osVersion=13.0&toolbar=true" target="_blank" rel="noopener">
+        <span>Open the live app demo<br><small>Runs the real app in your browser — no install needed</small></span>
+        <span>&rarr;</span>
+      </a>
+      <a class="btn secondary" href="https://qtrace-backend-pmjb.onrender.com/docs" target="_blank" rel="noopener">
         <span>Open the live API<br><small>Interactive Swagger docs — try real endpoints</small></span>
         <span>&rarr;</span>
       </a>
